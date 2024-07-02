@@ -36,14 +36,10 @@ function MeetingPage({ pusher }) {
     }, [fetchUserInfo]);
 
     useEffect(() => {
-        pusher.connection.bind('connected', () => {
+        if (pusher && pusher.connection && pusher.connection.state === 'connected') {
             setSocketId(pusher.connection.socket_id);
-        });
-
-        return () => {
-            pusher.connection.unbind('connected');
-        };
-    }, [pusher, userInfo]);
+        }
+    }, [pusher]);
 
 
     useEffect(() => {
@@ -52,6 +48,7 @@ function MeetingPage({ pusher }) {
         if (userInfo) {
             triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userJoined', message: `${userInfo.name} joined meet`, socketId })
         }
+        if(pusher)
         setMeetChannel(pusher.subscribe(`meet-${roomCode}`))
     }, [socketId, userInfo]);
 
