@@ -11,13 +11,16 @@ import SimplePeer from 'simple-peer';
 function MeetingPage({ pusher }) {
     const myVideo = useRef(null);
     const userVideo = useRef(null);
+    const peer = useRef(null)
     const [userInfo, setUserInfo] = useState(null);
+    const [myId, setMyId] = useState(null)
+    const [peerId, setPeerId] = useState(null)
     const { roomId, roomCode } = useParams()
     const [meetUser, setMeetUsers] = useState([])
     const [socketId, setSocketId] = useState(null)
     const [meetChannel, setMeetChannel] = useState(null);
     const [localStream, setLocalStream] = useState(null);
-    const [peer, setPeer] = useState(null);
+    // const [peer, setPeer] = useState(null);
     const [remoteStream, setRemoteStream] = useState(null);
 
 
@@ -35,7 +38,6 @@ function MeetingPage({ pusher }) {
 
     useEffect(() => {
         fetchUserInfo();
-
     }, [fetchUserInfo]);
 
     useEffect(() => {
@@ -60,48 +62,60 @@ function MeetingPage({ pusher }) {
         if (!socketId && !userInfo) return;
 
         if (userInfo) {
-            triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userJoined', message: `${userInfo.name} joined meet`, socketId })
+            triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userJoined', message: `${userInfo._id}`, socketId })
         }
         if (pusher)
             setMeetChannel(pusher.subscribe(`meet-${roomCode}`))
     }, [socketId, userInfo]);
 
+    useEffect(()=>{
+        if(!userInfo) return;
+        setMyId(userInfo._id);
+    }, [userInfo])
+
     useEffect(() => {
-        if (!localStream && myVideo.current) {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                    .then((stream) => {
-                        setLocalStream(stream);
-                        console.log('Local stream:', stream);
-                        myVideo.current.srcObject = stream;
-                    })
-                    .catch((error) => {
-                        console.error('Error accessing media devices:', error.name, error.message);
-                    });
-            }
+        if(!myId && !socketId ) return;
+        const peerInstance = new Peer(`${myId}`, {
+            host: 'collabproject-2.onrender.com',
+            secure: true,  
+            port: 443,   
+            path: '/app/v1/room/meeting',  // Path configured on your backend for PeerJS
+            debug: 3       // Set debug level to see PeerJS logs
+        });
 
-        }
-    }, [localStream, socketId]);
+        peerInstance.on('open', (id) => {
+            console.log('My Peer ID:', id);
+        });
 
+        peerInstance.on('call', (call) => {
+            navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true,
+            }).then((stream) => {
+                call.answer(stream);
+                call.on('stream', (remoteStream) => {
+                    if (myVideo.current) {
+                        myVideo.current.srcObject = remoteStream;
+                    }
+                });
+            }).catch((error) => {
+                console.error('Error answering call:', error);
+            });
+        });
+
+        peer.current = peerInstance;
+        return () => {
+            peerInstance.destroy(); // Clean up PeerJS instance on unmount
+        };
+    }, [myId, socketId]);
 
     useEffect(() => {
 
         if (!userInfo || !meetChannel) return;
 
-        meetChannel.bind('signal', (signal) => {
-            if (signal.peerId === userInfo._id) return;
-            console.log(signal)
-            if (signal.type === 'offer') {
-                handleOffer(signal);
-            } else if (signal.type === 'answer') {
-                handleAnswer(signal);
-            } else if (signal.type === 'candidate') {
-                handleCandidate(signal);
-            }
-        });
-
         meetChannel.bind('userJoined', function (data) {
             alert(data.message);
+            setPeerId(data.message)
         });
 
         return () => {
@@ -110,91 +124,24 @@ function MeetingPage({ pusher }) {
         };
     }, [meetChannel, userInfo])
 
-    const initiateCall = async () => {
-        try {
-            if (!userInfo || !localStream || !meetChannel) {
-                console.log('userInfo, localStream, or meetChannel is not available.');
-                return;
-            }
-            const peerInstance = new SimplePeer({
-                initiator: true,
-                
-            });
 
-            peerInstance.on('signal', (data) => {
-                meetChannel.trigger('signal', {
-                    peerId: userInfo._id,
-                    type: 'offer',
-                    data: data,
-                });
-            });
-
-            peerInstance.on('stream', (stream) => {
-                setRemoteStream(stream);
+    const callPeer = useCallback((peerId) => {
+        navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+        }).then((stream) => {
+            const call = peer.current.call(peerId, stream);
+            call.on('stream', (remoteStream) => {
                 if (userVideo.current) {
-                    userVideo.current.srcObject = stream;
+                    userVideo.current.srcObject = remoteStream;
                 }
             });
-
-            setPeer(peerInstance);
-        } catch (error) {
-            console.error('Error initializing SimplePeer in initiateCall:', error);
-            // Handle error appropriately, e.g., notify user or retry initialization
-        }
-    };
-
-    const handleOffer = async (signal) => {
-        try {
-            if (!userInfo || !localStream) {
-                console.log('userInfo or localStream is not available.');
-                return;
-            }
-
-            const peerInstance = new SimplePeer({
-                initiator: false,
-                stream: localStream,
-                trickle: false,
-            });
-
-            peerInstance.signal(signal.data);
-
-            peerInstance.on('signal', (data) => {
-                meetChannel.trigger('signal', {
-                    peerId: userInfo._id,
-                    type: 'answer',
-                    data: data,
-                });
-            });
-
-            peerInstance.on('stream', (stream) => {
-                setRemoteStream(stream);
-                if (userVideo.current) {
-                    userVideo.current.srcObject = stream;
-                }
-            });
-
-            setPeer(peerInstance);
-        } catch (error) {
-            console.error('Error initializing SimplePeer in handleOffer:', error);
-            // Handle error appropriately, e.g., notify user or retry initialization
-        }
-    };
+        }).catch((error) => {
+            console.error('Error calling peer:', error);
+        });
+    }, [socketId]);
 
 
-
-    // Function to handle incoming answer signal
-    const handleAnswer = async (signal) => {
-        if (peer) {
-            peer.signal(signal.data);
-        }
-    };
-
-    // Function to handle incoming ICE candidate signal
-    const handleCandidate = async (signal) => {
-        if (peer) {
-            peer.signal(signal.data);
-        }
-    };
 
     if (!socketId) {
         return <>loading</>
@@ -207,7 +154,10 @@ function MeetingPage({ pusher }) {
                 <div>
                     <h2>My Video</h2>
 
-                    <button onClick={initiateCall}>call</button>
+                    {
+                        peerId&& 
+                        <button onClick={()=> callPeer(peerId)}>call</button>
+                    }
                     <video ref={myVideo} autoPlay muted />
                 </div>
                 <div>
