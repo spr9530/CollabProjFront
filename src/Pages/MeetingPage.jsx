@@ -178,8 +178,8 @@ function MeetingPage({ pusher }) {
         }
     };
 
-    if(!socketId){
-        return <>loading</>
+    if(socketId){
+       console.log(soketId)
     }
 
     return (
