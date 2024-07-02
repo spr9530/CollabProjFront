@@ -94,8 +94,11 @@ function MeetingPage({ pusher }) {
             }).then((stream) => {
                 call.answer(stream);
                 call.on('stream', (remoteStream) => {
+                    if (userVideo.current) {
+                        userVideo.current.srcObject = remoteStream;
+                    }
                     if (myVideo.current) {
-                        myVideo.current.srcObject = remoteStream;
+                        myVideo.current.srcObject = stream;
                     }
                 });
             }).catch((error) => {
