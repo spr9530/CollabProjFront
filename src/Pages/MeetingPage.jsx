@@ -135,6 +135,9 @@ function MeetingPage({ pusher }) {
                 if (userVideo.current) {
                     userVideo.current.srcObject = remoteStream;
                 }
+                 if (myVideo.current) {
+                    myVideo.current.srcObject = stream;
+                }
             });
         }).catch((error) => {
             console.error('Error calling peer:', error);
