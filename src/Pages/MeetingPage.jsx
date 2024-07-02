@@ -36,11 +36,22 @@ function MeetingPage({ pusher }) {
     }, [fetchUserInfo]);
 
     useEffect(() => {
-        if (pusher && pusher.connection && pusher.connection.state === 'connected') {
-            setSocketId(pusher.connection.socket_id);
-        }
-    }, [pusher]);
+        if (pusher && pusher.connection) {
+            const handleConnectionStateChange = () => {
+                if (pusher.connection.state === 'connected') {
+                    setSocketId(pusher.connection.socket_id);
+                    setMeetChannel(pusher.subscribe(`meet-${roomCode}`));
+                }
+            };
 
+            handleConnectionStateChange();
+            pusher.connection.bind('state_change', handleConnectionStateChange);
+
+            return () => {
+                pusher.connection.unbind('state_change', handleConnectionStateChange);
+            };
+        }
+    }, [pusher, roomCode]);
 
     useEffect(() => {
         if (!socketId && !userInfo) return;
@@ -62,7 +73,7 @@ function MeetingPage({ pusher }) {
                     console.error('Error accessing media devices:', error);
                 });
         }
-    }, [localStream]);
+    }, [localStream, socketId]);
 
     useEffect(() => {
        
@@ -168,12 +179,11 @@ function MeetingPage({ pusher }) {
     };
 
     if(!socketId){
-        return <>Loading.....</>
+        return <>loading</>
     }
 
-
-
     return (
+        <>
         <div>
             <h1>Meeting Page</h1>
             <div>
@@ -187,6 +197,7 @@ function MeetingPage({ pusher }) {
                 <video ref={userVideo} autoPlay />
             </div>
         </div>
+        </>
     );
 }
 
