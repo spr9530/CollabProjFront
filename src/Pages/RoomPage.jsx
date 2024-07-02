@@ -126,7 +126,7 @@ function RoomPage({ pusher }) {
         const channel = pusher.subscribe(`${id1}`);
         const rqstChannel = pusher.subscribe(`${id2}`);
         channel.bind('userJoind', function (data) {
-            if (admin[0].userId._id === userInfo._id) {
+            if (admin && admin[0]&&admin[0].userId._id === userInfo._id) {
                 alert('Received data: ' + JSON.stringify(data));
             }
         });
