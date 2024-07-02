@@ -64,16 +64,19 @@ function MeetingPage({ pusher }) {
     }, [socketId, userInfo]);
 
     useEffect(() => {
-        if (!localStream && myVideo.current) {
-            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                .then((stream) => {
-                    setLocalStream(stream);
-                    myVideo.current.srcObject = stream;
-                }).catch((error) => {
-                    console.error('Error accessing media devices:', error);
-                });
-        }
-    }, [localStream, socketId]);
+    if (!localStream && myVideo.current) {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then((stream) => {
+                setLocalStream(stream);
+                console.log('Local stream:', stream);
+                myVideo.current.srcObject = stream;
+            })
+            .catch((error) => {
+                console.error('Error accessing media devices:', error.name, error.message);
+            });
+    }
+}, [localStream, socketId]);
+
 
     useEffect(() => {
        
@@ -102,66 +105,89 @@ function MeetingPage({ pusher }) {
     }, [meetChannel, userInfo])
 
     const initiateCall = async () => {
-        if (!userInfo || !localStream || !meetChannel) return;
-    
-        const peerInstance = new SimplePeer({
-            initiator: true,
-            stream: localStream,
-            trickle: false, // Disable trickle ICE, send candidates in SDP
-        });
-    
-        // When the SimplePeer instance emits a 'signal' event (to send an offer)
-        peerInstance.on('signal', (data) => {
-            meetChannel.trigger('signal', {
-                peerId: userInfo._id,
-                type: 'offer',
-                data: data,
-            });
-        });
-    
-        // When the SimplePeer instance receives a stream from the remote peer
-        peerInstance.on('stream', (stream) => {
-            setRemoteStream(stream);
-            if (userVideo.current) {
-                userVideo.current.srcObject = stream;
+        try {
+            if (!userInfo || !localStream || !meetChannel) {
+                console.log('userInfo, localStream, or meetChannel is not available.');
+                return;
             }
-        });
     
-        // Set the peer instance state
-        setPeer(peerInstance);
+            const peerInstance = new SimplePeer({
+                initiator: true,
+                stream: localStream,
+                trickle: false,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        // Add more ICE servers as needed
+                    ]
+                }
+            });
+    
+            peerInstance.on('signal', (data) => {
+                meetChannel.trigger('signal', {
+                    peerId: userInfo._id,
+                    type: 'offer',
+                    data: data,
+                });
+            });
+    
+            peerInstance.on('stream', (stream) => {
+                setRemoteStream(stream);
+                if (userVideo.current) {
+                    userVideo.current.srcObject = stream;
+                }
+            });
+    
+            setPeer(peerInstance);
+        } catch (error) {
+            console.error('Error initializing SimplePeer in initiateCall:', error);
+            // Handle error appropriately, e.g., notify user or retry initialization
+        }
     };
     
-
     const handleOffer = async (signal) => {
-        const peerInstance = new SimplePeer({
-            initiator: false,
-            stream: localStream,
-            trickle: false, // Disable trickle ICE, send candidates in SDP
-        });
-    
-        // When the SimplePeer instance receives an offer signal
-        peerInstance.signal(signal.data);
-    
-        // When the SimplePeer instance emits a 'signal' event (to send an answer)
-        peerInstance.on('signal', (data) => {
-            meetChannel.trigger('signal', {
-                peerId: userInfo._id,
-                type: 'answer',
-                data: data,
-            });
-        });
-    
-        // When the SimplePeer instance receives a stream from the remote peer
-        peerInstance.on('stream', (stream) => {
-            setRemoteStream(stream);
-            if (userVideo.current) {
-                userVideo.current.srcObject = stream;
+        try {
+            if (!userInfo || !localStream) {
+                console.log('userInfo or localStream is not available.');
+                return;
             }
-        });
     
-        // Set the peer instance state
-        setPeer(peerInstance);
+            const peerInstance = new SimplePeer({
+                initiator: false,
+                stream: localStream,
+                trickle: false,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        // Add more ICE servers as needed
+                    ]
+                }
+            });
+    
+            peerInstance.signal(signal.data);
+    
+            peerInstance.on('signal', (data) => {
+                meetChannel.trigger('signal', {
+                    peerId: userInfo._id,
+                    type: 'answer',
+                    data: data,
+                });
+            });
+    
+            peerInstance.on('stream', (stream) => {
+                setRemoteStream(stream);
+                if (userVideo.current) {
+                    userVideo.current.srcObject = stream;
+                }
+            });
+    
+            setPeer(peerInstance);
+        } catch (error) {
+            console.error('Error initializing SimplePeer in handleOffer:', error);
+            // Handle error appropriately, e.g., notify user or retry initialization
+        }
     };
+    
     
 
     // Function to handle incoming answer signal
@@ -178,8 +204,8 @@ function MeetingPage({ pusher }) {
         }
     };
 
-    if(socketId){
-       console.log(soketId)
+    if(!socketId){
+        return <>loading</>
     }
 
     return (
