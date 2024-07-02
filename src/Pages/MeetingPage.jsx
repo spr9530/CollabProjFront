@@ -204,9 +204,7 @@ function MeetingPage({ pusher }) {
         }
     };
 
-    if(!socketId){
-        return <>loading</>
-    }
+    
 
     return (
         <>
