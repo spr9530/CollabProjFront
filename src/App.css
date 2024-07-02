@@ -1,0 +1,67 @@
+:root {
+  --primary-background: #151719;
+  --secondary-background: #24282c;
+  --secondary-text: #9ba9b4;
+  --primary-blue: #5865f2;
+  --primary-green: #22c55e;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  width: 4px;
+  background-color: transparent;
+}
+
+.scrollbar-none::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / var(--tw-bg-opacity));
+  ;
+}
+
+.copy-popup {
+  width: 200px;
+  background-color: #4B5563;
+  /* Slate-500 */
+  color: #FFFFFF;
+  /* Text-white */
+  border: 2px solid #38A169;
+  /* Border-green-200 */
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  /* Rounded-md */
+  position: absolute;
+  bottom: 2rem;
+  opacity: 1;
+  transition: all 1s ease-in-out;
+  /* Define the transition */
+}
+
+.copy-popup.hide {
+  opacity: 0;
+  /* Hide the popup */
+  transition: all 1s ease-in-out;
+  /* Define the transition */
+}
+
+.jodit-container {
+  background-color: #1e293a !important;
+  width: 100%;
+  height: 100% !important;
+  /* padding-right: 15px;
+  margin-right: -15px; */
+}
+
+.jodit-workplace,
+.jodit-wysiwyg,
+.jodit-placeholder,
+.jodit-toolbar-editor-collection {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.jodit-toolbar__box:not(:empty):not(:empty) {
+  height: 100 !important;
+  width: 100% !important;
+  padding: 0;
+}
+.jodit-placeholder{
+  display: none!important;
+}
