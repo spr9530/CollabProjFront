@@ -61,7 +61,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/room/:roomId/meeting/:roomCode",
-    element:<MeetingPage socket={socket}/>
+    element:<MeetingPage pusher={pusher}/>
   },
   {
     path: "/room/temp",

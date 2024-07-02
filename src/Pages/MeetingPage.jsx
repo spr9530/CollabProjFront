@@ -3,13 +3,16 @@ import Peer from 'peerjs';
 import { getUserInfo } from '../user/userApi';
 import { useParams } from 'react-router-dom';
 import { triggerEditEvent } from '../socket/triggerEditor';
+import global from 'global'
+import * as process from "process";
+global.process = process;
 import SimplePeer from 'simple-peer';
 
 function MeetingPage({ pusher }) {
     const myVideo = useRef(null);
     const userVideo = useRef(null);
     const [userInfo, setUserInfo] = useState(null);
-    const {roomId, roomCode } = useParams()
+    const { roomId, roomCode } = useParams()
     const [meetUser, setMeetUsers] = useState([])
     const [socketId, setSocketId] = useState(null)
     const [meetChannel, setMeetChannel] = useState(null);
@@ -59,32 +62,35 @@ function MeetingPage({ pusher }) {
         if (userInfo) {
             triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userJoined', message: `${userInfo.name} joined meet`, socketId })
         }
-        if(pusher)
-        setMeetChannel(pusher.subscribe(`meet-${roomCode}`))
+        if (pusher)
+            setMeetChannel(pusher.subscribe(`meet-${roomCode}`))
     }, [socketId, userInfo]);
 
     useEffect(() => {
-    if (!localStream && myVideo.current) {
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then((stream) => {
-                setLocalStream(stream);
-                console.log('Local stream:', stream);
-                myVideo.current.srcObject = stream;
-            })
-            .catch((error) => {
-                console.error('Error accessing media devices:', error.name, error.message);
-            });
-    }
-}, [localStream, socketId]);
+        if (!localStream && myVideo.current) {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                    .then((stream) => {
+                        setLocalStream(stream);
+                        console.log('Local stream:', stream);
+                        myVideo.current.srcObject = stream;
+                    })
+                    .catch((error) => {
+                        console.error('Error accessing media devices:', error.name, error.message);
+                    });
+            }
+
+        }
+    }, [localStream, socketId]);
 
 
     useEffect(() => {
-       
+
         if (!userInfo || !meetChannel) return;
 
         meetChannel.bind('signal', (signal) => {
             if (signal.peerId === userInfo._id) return;
-
+            console.log(signal)
             if (signal.type === 'offer') {
                 handleOffer(signal);
             } else if (signal.type === 'answer') {
@@ -110,19 +116,11 @@ function MeetingPage({ pusher }) {
                 console.log('userInfo, localStream, or meetChannel is not available.');
                 return;
             }
-    
             const peerInstance = new SimplePeer({
                 initiator: true,
-                stream: localStream,
-                trickle: false,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        // Add more ICE servers as needed
-                    ]
-                }
+                
             });
-    
+
             peerInstance.on('signal', (data) => {
                 meetChannel.trigger('signal', {
                     peerId: userInfo._id,
@@ -130,42 +128,36 @@ function MeetingPage({ pusher }) {
                     data: data,
                 });
             });
-    
+
             peerInstance.on('stream', (stream) => {
                 setRemoteStream(stream);
                 if (userVideo.current) {
                     userVideo.current.srcObject = stream;
                 }
             });
-    
+
             setPeer(peerInstance);
         } catch (error) {
             console.error('Error initializing SimplePeer in initiateCall:', error);
             // Handle error appropriately, e.g., notify user or retry initialization
         }
     };
-    
+
     const handleOffer = async (signal) => {
         try {
             if (!userInfo || !localStream) {
                 console.log('userInfo or localStream is not available.');
                 return;
             }
-    
+
             const peerInstance = new SimplePeer({
                 initiator: false,
                 stream: localStream,
                 trickle: false,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        // Add more ICE servers as needed
-                    ]
-                }
             });
-    
+
             peerInstance.signal(signal.data);
-    
+
             peerInstance.on('signal', (data) => {
                 meetChannel.trigger('signal', {
                     peerId: userInfo._id,
@@ -173,22 +165,22 @@ function MeetingPage({ pusher }) {
                     data: data,
                 });
             });
-    
+
             peerInstance.on('stream', (stream) => {
                 setRemoteStream(stream);
                 if (userVideo.current) {
                     userVideo.current.srcObject = stream;
                 }
             });
-    
+
             setPeer(peerInstance);
         } catch (error) {
             console.error('Error initializing SimplePeer in handleOffer:', error);
             // Handle error appropriately, e.g., notify user or retry initialization
         }
     };
-    
-    
+
+
 
     // Function to handle incoming answer signal
     const handleAnswer = async (signal) => {
@@ -204,23 +196,25 @@ function MeetingPage({ pusher }) {
         }
     };
 
-    
+    if (!socketId) {
+        return <>loading</>
+    }
 
     return (
         <>
-        <div>
-            <h1>Meeting Page</h1>
             <div>
-                <h2>My Video</h2>
+                <h1>Meeting Page</h1>
+                <div>
+                    <h2>My Video</h2>
 
-                <button onClick={initiateCall}>call</button>
-                <video ref={myVideo} autoPlay muted />
+                    <button onClick={initiateCall}>call</button>
+                    <video ref={myVideo} autoPlay muted />
+                </div>
+                <div>
+                    <h2>User Video</h2>
+                    <video ref={userVideo} autoPlay />
+                </div>
             </div>
-            <div>
-                <h2>User Video</h2>
-                <video ref={userVideo} autoPlay />
-            </div>
-        </div>
         </>
     );
 }
