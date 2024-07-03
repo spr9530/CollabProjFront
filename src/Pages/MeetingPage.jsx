@@ -104,9 +104,9 @@ function MeetingPage({ pusher }) {
             }
             peerInstance.destroy();
         };
-    }, [myId, socketId, roomCode, userInfo]);
+    }, [myId, socketId, roomCode]);
 
-    const handlePeer = ({ peerId, remoteStream }) => {
+    const handlePeer = useCallback(({ peerId, remoteStream }) => {
         if (!userVideoRefs.current[peerId]) {
             userVideoRefs.current[peerId] = React.createRef();
         }
@@ -114,7 +114,7 @@ function MeetingPage({ pusher }) {
         if (videoRef.current) {
             videoRef.current.srcObject = remoteStream;
         }
-    };
+    }, []);
 
     useEffect(() => {
         if (!userInfo || !meetChannel) return;
@@ -151,11 +151,7 @@ function MeetingPage({ pusher }) {
         }).catch((error) => {
             console.error('Error calling peer:', error);
         });
-    }, []);
-
-    useEffect(() => {
-        console.log(peerIds);
-    }, [peerIds]);
+    }, [handlePeer]);
 
     if (!socketId) {
         return <div>Loading...</div>;
