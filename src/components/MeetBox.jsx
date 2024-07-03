@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react'
-import tempV from '../assets/tempV.mp4'
 
 function MeetBox({videoRef}) {
     useEffect(() => {
