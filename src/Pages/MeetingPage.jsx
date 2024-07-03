@@ -3,27 +3,21 @@ import Peer from 'peerjs';
 import { getUserInfo } from '../user/userApi';
 import { useParams } from 'react-router-dom';
 import { triggerEditEvent } from '../socket/triggerEditor';
-import global from 'global'
-import * as process from "process";
-global.process = process;
-import SimplePeer from 'simple-peer';
+import MeetBox from '../components/MeetBox';
 
 function MeetingPage({ pusher }) {
     const myVideo = useRef(null);
-    const userVideo = useRef(null);
-    const peer = useRef(null)
+    const videoRef = useRef(null);
+    const userVideoRefs = useRef({});
+
+    const peer = useRef(null);
     const [userInfo, setUserInfo] = useState(null);
-    const [myId, setMyId] = useState(null)
-    const [peerId, setPeerId] = useState(null)
-    const { roomId, roomCode } = useParams()
-    const [meetUser, setMeetUsers] = useState([])
-    const [socketId, setSocketId] = useState(null)
+    const [myId, setMyId] = useState(null);
+    const [peerIds, setPeerIds] = useState([]);
+    const { roomId, roomCode } = useParams();
+    const [socketId, setSocketId] = useState(null);
     const [meetChannel, setMeetChannel] = useState(null);
-    const [localStream, setLocalStream] = useState(null);
-    // const [peer, setPeer] = useState(null);
-    const [remoteStream, setRemoteStream] = useState(null);
-
-
+    const [viewRow, setViewRow] = useState('row')
     const fetchUserInfo = useCallback(async () => {
         try {
             const userInfo = await getUserInfo();
@@ -62,25 +56,24 @@ function MeetingPage({ pusher }) {
         if (!socketId && !userInfo) return;
 
         if (userInfo) {
-            triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userJoined', message: `${userInfo._id}`, socketId })
+            triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userJoined', message: `${userInfo._id}`, socketId });
         }
-        if (pusher)
-            setMeetChannel(pusher.subscribe(`meet-${roomCode}`))
-    }, [socketId, userInfo]);
-
-    useEffect(()=>{
-        if(!userInfo) return;
-        setMyId(userInfo._id);
-    }, [userInfo])
+    }, [socketId, userInfo, roomCode]);
 
     useEffect(() => {
-        if(!myId && !socketId ) return;
+        if (!userInfo) return;
+        setMyId(userInfo._id);
+    }, [userInfo]);
+
+    useEffect(() => {
+        if (!myId || !socketId) return;
+
         const peerInstance = new Peer(`${myId}`, {
             host: 'collabproject-2.onrender.com',
-            secure: true,  
-            port: 443,   
-            path: '/app/v1/room/meeting',  // Path configured on your backend for PeerJS
-            debug: 3       // Set debug level to see PeerJS logs
+            secure: true,
+            port: 443,
+            path: '/app/v1/room/meeting',
+            debug: 3
         });
 
         peerInstance.on('open', (id) => {
@@ -93,13 +86,9 @@ function MeetingPage({ pusher }) {
                 audio: true,
             }).then((stream) => {
                 call.answer(stream);
+                const peerId = call.peer;
                 call.on('stream', (remoteStream) => {
-                    if (userVideo.current) {
-                        userVideo.current.srcObject = remoteStream;
-                    }
-                    if (myVideo.current) {
-                        myVideo.current.srcObject = stream;
-                    }
+                    handlePeer({ peerId, remoteStream });
                 });
             }).catch((error) => {
                 console.error('Error answering call:', error);
@@ -107,26 +96,49 @@ function MeetingPage({ pusher }) {
         });
 
         peer.current = peerInstance;
+
         return () => {
-            peerInstance.destroy(); // Clean up PeerJS instance on unmount
+            if (userInfo) {
+                triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userLeft', message: `${userInfo._id}`, socketId });
+            }
+            peerInstance.destroy();
         };
-    }, [myId, socketId]);
+    }, [myId, socketId, roomCode]);
+
+   
+
+    const handlePeer = ({ peerId, remoteStream }) => {
+        console.log(peerId)
+        const userVideoRef = videoRef;
+        userVideoRefs.current[peerId] = userVideoRef;
+        if (userVideoRef.current) {
+            userVideoRef.current.srcObject = remoteStream;
+        }
+    };
 
     useEffect(() => {
-
         if (!userInfo || !meetChannel) return;
 
         meetChannel.bind('userJoined', function (data) {
             alert(data.message);
-            setPeerId(data.message)
+            callPeer(data.message);
+            console.log(data.message)
+            setPeerIds((prevPeerIds) => [...prevPeerIds, data.message]);
+        });
+
+        meetChannel.bind('userLeft', function (data) {
+            alert(`User Left: ${data.message}`);
+            setPeerIds((prevPeerIds) => prevPeerIds.filter((id) => id !== data.message));
+            if (userVideoRefs.current[data.message]) {
+                delete userVideoRefs.current[data.message];
+            }
         });
 
         return () => {
             meetChannel.unbind_all();
             meetChannel.unsubscribe();
         };
-    }, [meetChannel, userInfo])
-
+    }, [meetChannel, userInfo]);
 
     const callPeer = useCallback((peerId) => {
         navigator.mediaDevices.getUserMedia({
@@ -135,43 +147,45 @@ function MeetingPage({ pusher }) {
         }).then((stream) => {
             const call = peer.current.call(peerId, stream);
             call.on('stream', (remoteStream) => {
-                if (userVideo.current) {
-                    userVideo.current.srcObject = remoteStream;
-                }
-                 if (myVideo.current) {
-                    myVideo.current.srcObject = stream;
-                }
+                handlePeer({ peerId, remoteStream });
             });
         }).catch((error) => {
             console.error('Error calling peer:', error);
         });
-    }, [socketId]);
+    }, []);
 
-
+    useEffect(() => {
+        console.log(peerIds);
+    }, [peerIds]);
 
     if (!socketId) {
-        return <>loading</>
+        return <div>Loading...</div>;
     }
 
     return (
-        <>
+        <div>
+            <h1>Meeting Page</h1>
             <div>
-                <h1>Meeting Page</h1>
-                <div>
-                    <h2>My Video</h2>
-
-                    {
-                        peerId&& 
-                        <button onClick={()=> callPeer(peerId)}>call</button>
-                    }
-                    <video ref={myVideo} autoPlay muted />
-                </div>
-                <div>
-                    <h2>User Video</h2>
-                    <video ref={userVideo} autoPlay />
+                <h2>User Videos</h2>
+                <div className='flex gap-2 w-screen h-screen overflow-scroll scrollbar-none'>
+                    <div className='w-9/12 h-full flex flex-col items-center justify-center p-1 gap-2'>
+                        <div className='w-full h-[70%]'>
+                            <MeetBox />
+                        </div>
+                        <div className={`flex items-center gap-2 w-full overflow-x-scroll ${viewRow === 'row' && 'flex-wrap items-center justify-center'}`}>
+                            {peerIds && peerIds.map((id) => (
+                                <div className='h-full w-4/12' key={id}>
+                                    <MeetBox videoRef={userVideoRefs.current[id]} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className='w-3/12 h-full bg-black'>
+                        {/* Additional content for right panel */}
+                    </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 }
 
