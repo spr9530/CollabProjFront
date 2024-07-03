@@ -6,8 +6,7 @@ import { triggerEditEvent } from '../socket/triggerEditor';
 import MeetBox from '../components/MeetBox';
 
 function MeetingPage({ pusher }) {
-    const myVideo = useRef(null);
-    const videoRef = useRef(null);
+    const myVideoRef = useRef(null);
     const userVideoRefs = useRef({});
 
     const peer = useRef(null);
@@ -17,7 +16,8 @@ function MeetingPage({ pusher }) {
     const { roomId, roomCode } = useParams();
     const [socketId, setSocketId] = useState(null);
     const [meetChannel, setMeetChannel] = useState(null);
-    const [viewRow, setViewRow] = useState('row')
+    const [viewRow, setViewRow] = useState('row');
+
     const fetchUserInfo = useCallback(async () => {
         try {
             const userInfo = await getUserInfo();
@@ -105,14 +105,10 @@ function MeetingPage({ pusher }) {
         };
     }, [myId, socketId, roomCode]);
 
-   
-
     const handlePeer = ({ peerId, remoteStream }) => {
-        console.log(peerId)
-        const userVideoRef = videoRef;
-        userVideoRefs.current[peerId] = userVideoRef;
-        if (userVideoRef.current) {
-            userVideoRef.current.srcObject = remoteStream;
+        const videoRef = userVideoRefs.current[peerId];
+        if (videoRef && videoRef.current) {
+            videoRef.current.srcObject = remoteStream;
         }
     };
 
@@ -122,7 +118,6 @@ function MeetingPage({ pusher }) {
         meetChannel.bind('userJoined', function (data) {
             alert(data.message);
             callPeer(data.message);
-            console.log(data.message)
             setPeerIds((prevPeerIds) => [...prevPeerIds, data.message]);
         });
 
@@ -170,10 +165,10 @@ function MeetingPage({ pusher }) {
                 <div className='flex gap-2 w-screen h-screen overflow-scroll scrollbar-none'>
                     <div className='w-9/12 h-full flex flex-col items-center justify-center p-1 gap-2'>
                         <div className='w-full h-[70%]'>
-                            <MeetBox />
+                            <MeetBox videoRef={myVideoRef} />
                         </div>
                         <div className={`flex items-center gap-2 w-full overflow-x-scroll ${viewRow === 'row' && 'flex-wrap items-center justify-center'}`}>
-                            {peerIds && peerIds.map((id) => (
+                            {peerIds.map((id) => (
                                 <div className='h-full w-4/12' key={id}>
                                     <MeetBox videoRef={userVideoRefs.current[id]} />
                                 </div>
