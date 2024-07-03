@@ -1,15 +1,25 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
-function MeetBox({ videoRef }) {
+function MeetBox({ mediaStream }) {
+    const videoRef = useRef(null);
+
     useEffect(() => {
-        if (videoRef && videoRef.current) {
-            console.log('Video Ref:', videoRef.current);
+        if (videoRef.current && mediaStream) {
+            console.log('done')
+            videoRef.current.srcObject = mediaStream;
+            videoRef.current.play();
         }
-    }, [videoRef]);
+    }, [mediaStream]);
+
 
     return (
         <div className='h-full w-full bg-black rounded-3xl text-white'>
-            <video className='h-full w-full object-cover rounded-3xl' ref={videoRef} autoPlay />
+            <video
+                className='h-full w-full object-cover rounded-3xl'
+                ref={videoRef}
+                autoPlay
+                playsInline
+            />
         </div>
     );
 }
