@@ -1,20 +1,17 @@
-import React, { useEffect } from 'react'
+import React, { useEffect } from 'react';
 
-function MeetBox({videoRef}) {
+function MeetBox({ videoRef }) {
     useEffect(() => {
-        console.log('Video Ref:', videoRef); // Check if videoRef is correctly passed
         if (videoRef && videoRef.current) {
-            console.log('Current Video Element:', videoRef.current); // Check current element reference
+            console.log('Video Ref:', videoRef.current);
         }
     }, [videoRef]);
+
     return (
-        <>
-            <div className='h-full w-full bg-black rounded-3xl text-white '>
-                <video className='h-full w-full object-cover rounded-3xl' ref={videoRef} autoPlay>
-                </video>
-            </div>
-        </>
-    )
+        <div className='h-full w-full bg-black rounded-3xl text-white'>
+            <video className='h-full w-full object-cover rounded-3xl' ref={videoRef} autoPlay />
+        </div>
+    );
 }
 
-export default MeetBox
+export default MeetBox;
