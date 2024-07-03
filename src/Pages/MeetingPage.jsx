@@ -1,19 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Peer from 'peerjs';
 import { getUserInfo } from '../user/userApi';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { triggerEditEvent } from '../socket/triggerEditor';
 import MeetBox from '../components/MeetBox';
 
 function MeetingPage({ pusher }) {
     const myVideoRef = useRef(null);
     const userVideoRefs = useRef({});
+    const navigate = useNavigate();
 
     const peer = useRef(null);
     const [userInfo, setUserInfo] = useState(null);
     const [myId, setMyId] = useState(null);
     const [peerIds, setPeerIds] = useState([]);
-    const { roomId, roomCode } = useParams();
+    const { roomCode } = useParams();
     const [socketId, setSocketId] = useState(null);
     const [meetChannel, setMeetChannel] = useState(null);
     const [viewRow, setViewRow] = useState('row');
@@ -22,13 +23,13 @@ function MeetingPage({ pusher }) {
         try {
             const userInfo = await getUserInfo();
             if (userInfo.error) {
-                navigate('/', { replace: true, state: { from: `/room/${id}` } });
+                navigate('/', { replace: true, state: { from: `/room/${roomCode}` } });
             }
             setUserInfo(userInfo);
         } catch (error) {
             console.error("Error fetching user info:", error);
         }
-    }, []);
+    }, [navigate, roomCode]);
 
     useEffect(() => {
         fetchUserInfo();
@@ -55,7 +56,7 @@ function MeetingPage({ pusher }) {
     useEffect(() => {
         if (!socketId && !userInfo) return;
 
-        if (userInfo) {
+        if (userInfo && socketId) {
             triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userJoined', message: `${userInfo._id}`, socketId });
         }
     }, [socketId, userInfo, roomCode]);
@@ -103,11 +104,14 @@ function MeetingPage({ pusher }) {
             }
             peerInstance.destroy();
         };
-    }, [myId, socketId, roomCode]);
+    }, [myId, socketId, roomCode, userInfo]);
 
     const handlePeer = ({ peerId, remoteStream }) => {
+        if (!userVideoRefs.current[peerId]) {
+            userVideoRefs.current[peerId] = React.createRef();
+        }
         const videoRef = userVideoRefs.current[peerId];
-        if (videoRef && videoRef.current) {
+        if (videoRef.current) {
             videoRef.current.srcObject = remoteStream;
         }
     };
