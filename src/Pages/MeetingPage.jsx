@@ -14,7 +14,7 @@ function MeetingPage({ pusher }) {
     const [userInfo, setUserInfo] = useState(null);
     const [myId, setMyId] = useState(null);
     const [peerIds, setPeerIds] = useState([]);
-    const { roomCode } = useParams();
+    const {roomCode } = useParams();
     const [socketId, setSocketId] = useState(null);
     const [meetChannel, setMeetChannel] = useState(null);
     const [viewRow, setViewRow] = useState('row');
@@ -107,13 +107,8 @@ function MeetingPage({ pusher }) {
     }, [myId, socketId, roomCode]);
 
     const handlePeer = useCallback(({ peerId, remoteStream }) => {
-        if (!userVideoRefs.current[peerId]) {
-            userVideoRefs.current[peerId] = React.createRef();
-        }
-        const videoRef = userVideoRefs.current[peerId];
-        if (videoRef.current) {
-            videoRef.current.srcObject = remoteStream;
-        }
+        console.log('called')
+        setPeerIds([...peerIds, {peerId, stream: remoteStream}])
     }, []);
 
     useEffect(() => {
@@ -122,15 +117,13 @@ function MeetingPage({ pusher }) {
         meetChannel.bind('userJoined', function (data) {
             alert(data.message);
             callPeer(data.message);
-            setPeerIds((prevPeerIds) => [...prevPeerIds, data.message]);
+            // setPeerIds((prevPeerIds) => [...prevPeerIds, data.message]);
         });
 
         meetChannel.bind('userLeft', function (data) {
             alert(`User Left: ${data.message}`);
-            setPeerIds((prevPeerIds) => prevPeerIds.filter((id) => id !== data.message));
-            if (userVideoRefs.current[data.message]) {
-                delete userVideoRefs.current[data.message];
-            }
+            // setPeerIds((prevPeerIds) => prevPeerIds.filter((id) => id !== data.message));
+            
         });
 
         return () => {
@@ -153,6 +146,10 @@ function MeetingPage({ pusher }) {
         });
     }, [handlePeer]);
 
+    useEffect(()=>{
+        console.log(peerIds)
+    },[peerIds])
+
     if (!socketId) {
         return <div>Loading...</div>;
     }
@@ -165,12 +162,16 @@ function MeetingPage({ pusher }) {
                 <div className='flex gap-2 w-screen h-screen overflow-scroll scrollbar-none'>
                     <div className='w-9/12 h-full flex flex-col items-center justify-center p-1 gap-2'>
                         <div className='w-full h-[70%]'>
-                            <MeetBox videoRef={myVideoRef} />
-                        </div>
-                        <div className={`flex items-center gap-2 w-full overflow-x-scroll ${viewRow === 'row' && 'flex-wrap items-center justify-center'}`}>
-                            {peerIds.map((id) => (
+                        {/* {peerIds.map((id) => (
                                 <div className='h-full w-4/12' key={id}>
                                     <MeetBox videoRef={userVideoRefs.current[id]} />
+                                </div>
+                            ))} */}
+                        </div>
+                        <div className={`flex items-center gap-2 w-full overflow-x-scroll ${viewRow === 'row' && 'flex-wrap items-center justify-center'}`}>
+                            {peerIds && peerIds.map((peer) => (
+                                <div className='h-full w-4/12' key={peer.peerId}>
+                                    <MeetBox mediaStream={peer.stream} />
                                 </div>
                             ))}
                         </div>
