@@ -104,44 +104,47 @@ function MeetingPage({ pusher }) {
 
     useEffect(() => {
         if (!myId || !socketId) return;
-
+    
         const peerInstance = new Peer(`${myId}`, {
-            host: 'collabproject-2.onrender.com',
-            secure: true,
-            port: 443,
-            path: '/app/v1/room/meeting',
-            debug: 3
+          host: 'collabproject-2.onrender.com',
+          secure: true,
+          port: 443,
+          path: '/app/v1/room/meeting',
+          debug: 3,
         });
-
+    
         peerInstance.on('open', (id) => {
-            console.log('My Peer ID:', id);
+          console.log('My Peer ID:', id);
+
         });
 
-        peerInstance.on('data', (data)=>{
-            setMessages((prevMessage)=>[
-                ...prevMessage,
-                data
-            ])
-        })
-
-        peerInstance.on('call', (call) => {
-            call.answer(localStream);
-            const peerId = call.peer;
-            var conn = peerInstance.connect(call.peer);
-            call.on('stream', (remoteStream) => {
-                handlePeer({ peerId, remoteStream, calling: call, conn });
+        peerInstance.on('connection', (conn)=>{
+            conn.on('open', function() {
+                console.log('conn open');
             });
+            conn.on('data', function(data) {
+                setMessages((prevMessage)=>[...prevMessage, data])
+            });
+        })
+    
+        peerInstance.on('call', (call) => {
+          call.answer(localStream);
+          const peerId = call.peer;
+          const conn = peerInstance.connect(call.peer);
+          call.on('stream', (remoteStream) => {
+            handlePeer({ peerId, remoteStream, calling: call, conn });
+          });
         });
-
+    
         peer.current = peerInstance;
-
+    
         return () => {
-            if (userInfo) {
-                triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userLeft', message: `${userInfo._id}`, socketId });
-            }
-            peerInstance.destroy();
+          if (userInfo) {
+            triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userLeft', message: `${userInfo._id}`, socketId });
+          }
+          peerInstance.destroy();
         };
-    }, [myId, socketId, roomCode]);
+      }, [myId, socketId, roomCode, localStream, userInfo, triggerEditEvent])
 
     const handlePeer = useCallback(({ peerId, remoteStream, calling, conn }) => {
         setPeerIds((prevPeerIds) => {
@@ -443,7 +446,7 @@ function MeetingPage({ pusher }) {
                                         onChange = {(e)=>setLocalMssg(e.target.value)}
                                         className="bg-transparent text-white outline-none w-10/12 resize-none h-10 max-h-40 p-2 border border-gray-300 rounded-md scrollbar-none"
                                     />
-                                    <div className='text-purple-600 bg-primaryBackground w-fit flex items-center justify-center rounded-full p-2' onClick={()=>sendMessage('hello')}>
+                                    <div className='text-purple-600 bg-primaryBackground w-fit flex items-center justify-center rounded-full p-2' onClick={()=>sendMessage(localMssg)}>
                                         <FaPaperPlane className='-ml-1' />
                                     </div>
                                 </div>
