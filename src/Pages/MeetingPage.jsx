@@ -117,6 +117,13 @@ function MeetingPage({ pusher }) {
             console.log('My Peer ID:', id);
         });
 
+        peerInstance.on('data', (data)=>{
+            setMessages((prevMessage)=>[
+                ...prevMessage,
+                data
+            ])
+        })
+
         peerInstance.on('call', (call) => {
             call.answer(localStream);
             const peerId = call.peer;
@@ -135,14 +142,14 @@ function MeetingPage({ pusher }) {
         };
     }, [myId, socketId, roomCode]);
 
-    const handlePeer = useCallback(({ peerId, remoteStream, calling }) => {
+    const handlePeer = useCallback(({ peerId, remoteStream, calling, conn }) => {
         setPeerIds((prevPeerIds) => {
             const existingPeer = prevPeerIds.find((peer) => peer.peerId === peerId);
             if (existingPeer) {
                 existingPeer.stream = remoteStream;
                 return [...prevPeerIds];
             } else {
-                return [...prevPeerIds, { peerId, stream: remoteStream, isScaled: false, calling }];
+                return [...prevPeerIds, { peerId, stream: remoteStream, isScaled: false, calling, conn }];
             }
         });
     }, []);
@@ -153,6 +160,7 @@ function MeetingPage({ pusher }) {
 
         meetChannel.bind('userJoined', function (data) {
             alert(data.message);
+            peer.current.connect(data.message)
             callPeer(data.message);
         });
 
@@ -172,9 +180,10 @@ function MeetingPage({ pusher }) {
             console.error('Local stream is not available.');
             return;
         }
+        const conn = peer.current.connect(peerId);
         const call = peer.current.call(peerId, localStream);
         call.on('stream', (remoteStream) => {
-            handlePeer({ peerId, remoteStream, calling: call });
+            handlePeer({ peerId, remoteStream, calling: call, conn: conn });
         });
         call.on('close', () => {
             console.log(`Call with ${peerId} has ended.`);
@@ -229,8 +238,6 @@ function MeetingPage({ pusher }) {
             });
         });
     };
-
-    // const blackVideoTrack = createBlackVideoTrack();
 
     useEffect(() => {
         const handleToggleVideo = () => {
@@ -318,12 +325,10 @@ function MeetingPage({ pusher }) {
     }, [audio, video, screen]);
 
     const sendMessage = (message) => {
-        peerIds.forEach(peer => {
-          if (peer.calling) {
-            const { calling } = peer;
-            console.log(calling)            
-          }
-        });
+        peerIds.forEach((id)=>{
+            id.conn.send({sender:'streamer', message:message})
+            setMessages({ sender: 'local', message: message });
+        })
       };
     const handleScale = (id) => {
         setPeerIds(peerIds.map((peer) => {
@@ -436,7 +441,7 @@ function MeetingPage({ pusher }) {
                                         onChange = {(e)=>setLocalMssg(e.target.value)}
                                         className="bg-transparent text-white outline-none w-10/12 resize-none h-10 max-h-40 p-2 border border-gray-300 rounded-md scrollbar-none"
                                     />
-                                    <div className='text-purple-600 bg-primaryBackground w-fit flex items-center justify-center rounded-full p-2' onClick={sendMessage}>
+                                    <div className='text-purple-600 bg-primaryBackground w-fit flex items-center justify-center rounded-full p-2' onClick={()=>sendMessage('hello')}>
                                         <FaPaperPlane className='-ml-1' />
                                     </div>
                                 </div>
