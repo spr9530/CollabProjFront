@@ -127,8 +127,9 @@ function MeetingPage({ pusher }) {
         peerInstance.on('call', (call) => {
             call.answer(localStream);
             const peerId = call.peer;
+            var conn = peerInstance.connect(call.peer);
             call.on('stream', (remoteStream) => {
-                handlePeer({ peerId, remoteStream, calling: call });
+                handlePeer({ peerId, remoteStream, calling: call, conn });
             });
         });
 
@@ -326,8 +327,9 @@ function MeetingPage({ pusher }) {
 
     const sendMessage = (message) => {
         peerIds.forEach((id)=>{
+            setMessages((prevMessage)=>[...prevMessage, { sender: 'local', message: message }]);
             id.conn.send({sender:'streamer', message:message})
-            setMessages({ sender: 'local', message: message });
+            setLocalMssg('')
         })
       };
     const handleScale = (id) => {
