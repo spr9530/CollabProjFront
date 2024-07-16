@@ -144,7 +144,7 @@ function MeetingPage({ pusher }) {
           }
           peerInstance.destroy();
         };
-      }, [myId, socketId, roomCode, localStream, userInfo, triggerEditEvent])
+      }, [myId, socketId, roomCode])
 
     const handlePeer = useCallback(({ peerId, remoteStream, calling, conn }) => {
         setPeerIds((prevPeerIds) => {
