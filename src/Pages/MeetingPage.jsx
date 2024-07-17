@@ -31,6 +31,7 @@ function MeetingPage({ pusher }) {
     const [chat, setChat] = useState('hidden');
     const [localMssg, setLocalMssg] = useState('')
     const [messages, setMessages] = useState([])
+    const localStreamRef = useRef(null);
 
 
 
@@ -56,7 +57,7 @@ function MeetingPage({ pusher }) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             setLocalStream(stream);
-            console.log(stream)
+            localStreamRef.current = stream;
             setMeet(true);
             if (userInfo && socketId) {
                 triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userJoined', message: `${userInfo._id}`, socketId });
@@ -131,15 +132,14 @@ function MeetingPage({ pusher }) {
             if (userInfo) {
                 triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userLeft', message: `${userInfo._id}`, socketId });
             }
-            if (localStream && localStream.getTracks()) localStream.getTracks().forEach(track => track.stop())
             peerInstance.destroy();
             window.location.reload()
         };
-    }, [myId, socketId, roomCode, meet, localStream])
+    }, [myId, socketId, roomCode, meet])
 
     const handlePeer = useCallback(({ peerId, remoteStream, calling, conn }) => {
         setPeerIds((prevPeerIds) => {
-            
+
             const existingPeer = prevPeerIds.find((peer) => peer.peerId === peerId);
             if (existingPeer) {
                 existingPeer.stream = remoteStream;
@@ -170,21 +170,27 @@ function MeetingPage({ pusher }) {
         };
     }, [meetChannel, userInfo]);
 
-    const callPeer = (peerId) => {
-        
+    const callPeer = useCallback((peerId) => {
+
+        const stream = localStreamRef.current;
+    if (!stream) {
+        console.error('Local stream is not available.', stream);
+        return;
+    }
         const conn = peer.current.connect(peerId);
-        const call = peer.current.call(peerId, localStream);
+        const call = peer.current.call(peerId, stream);
         call.on('stream', (remoteStream) => {
             handlePeer({ peerId, remoteStream, calling: call, conn: conn });
         });
         call.on('close', () => {
             console.log(`Call with ${peerId} has ended.`);
         });
+
         call.on('error', (error) => {
             console.error(`Error calling peer ${peerId}:`, error);
-        });
-    }
 
+        });
+    }, [localStream])
     function createBlackVideoTrack({ width = 640, height = 480 } = {}) {
         const canvas = Object.assign(document.createElement("canvas"), { width, height });
         canvas.getContext("2d").fillRect(0, 0, width, height); // fill the canvas with black
@@ -228,6 +234,10 @@ function MeetingPage({ pusher }) {
             });
         });
     };
+    useEffect(()=>{
+        console.log(localStream)
+
+    },[localStream])
     useEffect(() => {
         if (meet) {
             handleToggleVideo()
@@ -322,7 +332,7 @@ function MeetingPage({ pusher }) {
         peerIds.forEach((id) => {
             setMessages((prevMessage) => [...prevMessage, { sender: 'local', message: message }]);
             id.conn.send({ sender: 'streamer', message: message })
-           
+
         })
         setLocalMssg('')
     };
@@ -364,7 +374,8 @@ function MeetingPage({ pusher }) {
         setMeet(false);
     }
 
-    if (!socketId && !userInfo ) {
+
+    if (!socketId && !userInfo) {
         return <div>Loading...</div>;
     }
 
@@ -461,7 +472,7 @@ function MeetingPage({ pusher }) {
                                 <button onClick={() => setChat('visible')}><IoChatbox className='text-white cursor-pointer' /></button>
                             </div>
                         </div>
-                        }
+                    }
                 </div>
             </div>
         </div>
