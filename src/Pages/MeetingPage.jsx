@@ -56,6 +56,8 @@ function MeetingPage({ pusher }) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             setLocalStream(stream);
+            console.log(stream)
+            setMeet(true);
             if (userInfo && socketId) {
                 triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userJoined', message: `${userInfo._id}`, socketId });
             }
@@ -63,7 +65,6 @@ function MeetingPage({ pusher }) {
         } catch (error) {
             console.error('Error accessing media devices:', error);
         }
-        setMeet(true);
     };
 
     useEffect(() => {
@@ -134,7 +135,7 @@ function MeetingPage({ pusher }) {
             peerInstance.destroy();
             window.location.reload()
         };
-    }, [myId, socketId, roomCode, meet])
+    }, [myId, socketId, roomCode, meet, localStream])
 
     const handlePeer = useCallback(({ peerId, remoteStream, calling, conn }) => {
         setPeerIds((prevPeerIds) => {
@@ -154,7 +155,6 @@ function MeetingPage({ pusher }) {
         if (!userInfo || !meetChannel || meet) return;
 
         meetChannel.bind('userJoined', function (data) {
-            console.log(data)
             peer.current.connect(data.message)
             callPeer(data.message);
         });
@@ -170,12 +170,8 @@ function MeetingPage({ pusher }) {
         };
     }, [meetChannel, userInfo]);
 
-    const callPeer = useCallback((peerId) => {
-        if (!localStream) {
-            console.error('Local stream is not available.');
-            return;
-        }
-        console.log('heresjkjksjdksjkdjksjkdskdk')
+    const callPeer = (peerId) => {
+        
         const conn = peer.current.connect(peerId);
         const call = peer.current.call(peerId, localStream);
         call.on('stream', (remoteStream) => {
@@ -184,12 +180,11 @@ function MeetingPage({ pusher }) {
         call.on('close', () => {
             console.log(`Call with ${peerId} has ended.`);
         });
-
         call.on('error', (error) => {
             console.error(`Error calling peer ${peerId}:`, error);
-           
         });
-    }, [localStream])
+    }
+
     function createBlackVideoTrack({ width = 640, height = 480 } = {}) {
         const canvas = Object.assign(document.createElement("canvas"), { width, height });
         canvas.getContext("2d").fillRect(0, 0, width, height); // fill the canvas with black
@@ -368,11 +363,8 @@ function MeetingPage({ pusher }) {
         window.location.reload()
         setMeet(false);
     }
-    useEffect(()=>{
-        console.log(peerIds)
-    },[peerIds])
 
-    if (!socketId && !userInfo) {
+    if (!socketId && !userInfo ) {
         return <div>Loading...</div>;
     }
 
