@@ -7,7 +7,10 @@ import MeetBox from '../components/MeetBox';
 import { RiUnpinFill } from "react-icons/ri";
 import { BsFillCameraVideoFill, BsFillCameraVideoOffFill } from "react-icons/bs";
 import { IoMdMic, IoMdMicOff } from "react-icons/io";
+import { ImPhoneHangUp } from "react-icons/im";
 import { MdScreenShare, MdStopScreenShare } from "react-icons/md";
+import { MdLaptopWindows } from "react-icons/md";
+import { IoChatbox } from "react-icons/io5";
 import { FaPaperPlane } from "react-icons/fa";
 
 
@@ -25,6 +28,7 @@ function MeetingPage({ pusher }) {
     const [audio, setAudio] = useState(true)
     const [screen, setScreen] = useState(false)
     const [localStream, setLocalStream] = useState(null);
+    const [chat, setChat] = useState('hidden');
     const [localMssg, setLocalMssg] = useState('')
     const [messages, setMessages] = useState([])
 
@@ -233,7 +237,7 @@ function MeetingPage({ pusher }) {
             handleToggleVideo()
         }
     }, [audio, video, screen])
-    
+
     const handleToggleVideo = () => {
         if (!video && !audio && !screen) {
             streamNullMedia();
@@ -318,11 +322,13 @@ function MeetingPage({ pusher }) {
 
 
     const sendMessage = (message) => {
+        setMessages((prevMessage) => [...prevMessage, { sender: 'local', message: message }]);
         peerIds.forEach((id) => {
             setMessages((prevMessage) => [...prevMessage, { sender: 'local', message: message }]);
             id.conn.send({ sender: 'streamer', message: message })
-            setLocalMssg('')
+           
         })
+        setLocalMssg('')
     };
     const handleScale = (id) => {
         setPeerIds(peerIds.map((peer) => {
@@ -367,30 +373,9 @@ function MeetingPage({ pusher }) {
     }
 
     return (
-        <div className='bg-primaryBackground relative'>
-            
-            <div className="controls absolute text-white text-3xl flex gap-3 z-20">
-                <div className='rounded-full p-2 bg-gray-700'>
-                    {video ? <BsFillCameraVideoOffFill className='text-red-500 cursor-pointer' onClick={() => setVideo(false)} />
-                        :
-                        <BsFillCameraVideoFill className='cursor-pointer' onClick={() => { setVideo(true), setScreen(false) }} />
-                    }
-                </div>
-                <div className=' rounded-full p-2 bg-gray-700'>
-                    {audio ? <IoMdMicOff className='text-red-500 cursor-pointer' onClick={() => setAudio(false)} /> : <IoMdMic className='cursor-pointer' onClick={() => setAudio(true)} />}
-                </div>
-                <div className=' rounded-full p-2 bg-gray-700'>
-                    {screen ? <MdStopScreenShare className='text-red-500 cursor-pointer' onClick={() => setScreen(false)} /> : <MdScreenShare className='cursor-pointer' onClick={() => { setScreen(true), setVideo(false) }} />}
-                </div>
-                <div className=' rounded-full p-2 bg-gray-700'>
-                    <button onClick={leavemeet}>Leave</button>
-                </div>
-                <div className=' rounded-full p-2 bg-gray-700'>
-                    <button onClick={() => startMedia()}>Ready</button>
-                </div>
-            </div>
-            <div>
-                <div className='flex  w-full h-full justify-center relative'>
+        <div className='bg-primaryBackground w-full'>
+            <div className='relative'>
+                <div className={`flex  w-full h-full justify-center relative `}>
                     {peerIds && peerIds.map((peer) => (
                         peer.isScaled ?
                             <>
@@ -404,22 +389,27 @@ function MeetingPage({ pusher }) {
                             null
                     ))}
                 </div>
-                <div className='flex w-full h-screen overflow-scroll scrollbar-none px-2'>
+                <div className='flex flex-col w-full h-screen overflow-scroll scrollbar-none px-2'>
                     <div className={`flex flex-wrap w-full gap-3 h-full overflow-scroll p-1 justify-center relative scrollbar-trans`}>
                         {peerIds && peerIds.map((peer) => (
                             <div className={`w-[30%] flex-shrink-0 h-[200px] ${!peer.isScaled ? 'visible' : 'hidden'}`} onClick={() => handleScale(peer.peerId)} key={peer.peerId}>
                                 <MeetBox mediaStream={peer.stream} />
                             </div>
                         ))}
-                        {
-                            localStream && <div id='12' className='w-[30%] flex-shrink-0 h-[200px]  hover:cursor-pointer' onClick={(e) => handleScale('11')} >
-                                <MeetBox mediaStream={localStream} />
-                            </div>
-                        }
+                        <div className='absolute bottom-1 right-1'>
+                            {
+                                localStream && <div id='12' className='w-full flex-shrink-0 h-[100px] md:h-[130px] lg:h-[200px]  hover:cursor-pointer' onClick={(e) => handleScale('11')} >
+                                    <MeetBox mediaStream={localStream} />
+                                </div>
+                            }
+                        </div>
                     </div>
-                    <div className='w-4/12 h-full border-2 border-black rounded-md p-2'>
-                        <div className='w-full flex flex-col h-full bg-primaryBackground p-2 rounded-md'>
-                            <div className='w-full h-full flex flex-col gap-2'>
+                    <div className={` rounded-full p-2 bg-gray-700 mx-auto mb-40 text-white ${meet ? 'hidden' : ' visible'}`}>
+                        <button onClick={() => startMedia()} className='flex gap-2 items-center'>Join <MdLaptopWindows /></button>
+                    </div>
+                    <div className={`w-full md:w-4/12 h-full border-2 border-black rounded-md p-2 absolute right-1 ${chat}`}>
+                        <div className='w-full flex flex-col bg-primaryBackground p-2 rounded-md h-[95vh]'>
+                            <div className='w-full min-h-[84%] flex flex-col gap-2'>
                                 {
                                     messages && messages.map((message) => (
                                         message.sender === 'local' ?
@@ -436,11 +426,8 @@ function MeetingPage({ pusher }) {
                                             </div>
                                     ))
                                 }
-
-
-
                             </div>
-                            <div className='w-full h-2/12'>
+                            <div className='w-full h-2/12 '>
                                 <div className='bg-gray-800 rounded-md p-2 w-full flex gap-2'>
                                     <textarea
                                         placeholder="Type something..."
@@ -455,6 +442,30 @@ function MeetingPage({ pusher }) {
                             </div>
                         </div>
                     </div>
+                    {
+                        meet &&
+                        <div className="controls text-white text-lg md:text-xl lg:text-3xl flex w-full justify-center gap-3 z-20 ">
+                            <div className='rounded-full p-2 bg-gray-700'>
+                                {video ? <BsFillCameraVideoOffFill className='text-red-500 cursor-pointer' onClick={() => setVideo(false)} />
+                                    :
+                                    <BsFillCameraVideoFill className='cursor-pointer' onClick={() => { setVideo(true), setScreen(false) }} />
+                                }
+                            </div>
+                            <div className=' rounded-full p-2 bg-gray-700'>
+                                {audio ? <IoMdMicOff className='text-red-500 cursor-pointer' onClick={() => setAudio(false)} /> : <IoMdMic className='cursor-pointer' onClick={() => setAudio(true)} />}
+                            </div>
+                            <div className=' rounded-full p-2 bg-gray-700'>
+                                {screen ? <MdStopScreenShare className='text-red-500 cursor-pointer' onClick={() => setScreen(false)} /> : <MdScreenShare className='cursor-pointer' onClick={() => { setScreen(true), setVideo(false) }} />}
+                            </div>
+                            <div className=' rounded-full p-2 bg-gray-700'>
+                                <button onClick={leavemeet}><ImPhoneHangUp className='text-red-500 cursor-pointer' /></button>
+                            </div>
+
+                            <div className=' rounded-full p-2 bg-gray-700'>
+                                <button onClick={() => setChat('visible')}><IoChatbox className='text-white cursor-pointer' /></button>
+                            </div>
+                        </div>
+                        }
                 </div>
             </div>
         </div>
