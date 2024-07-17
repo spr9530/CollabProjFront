@@ -91,7 +91,7 @@ function MeetingPage({ pusher }) {
 
 
     useEffect(() => {
-        if (!myId || !socketId) return;
+        if (!myId || !socketId || !meet) return;
 
         const peerInstance = new Peer(`${myId}`, {
             host: 'collabproject-2.onrender.com',
@@ -134,7 +134,7 @@ function MeetingPage({ pusher }) {
             peerInstance.destroy();
             window.location.reload()
         };
-    }, [myId, socketId, roomCode])
+    }, [myId, socketId, roomCode, meet])
 
     const handlePeer = useCallback(({ peerId, remoteStream, calling, conn }) => {
         setPeerIds((prevPeerIds) => {
@@ -151,10 +151,10 @@ function MeetingPage({ pusher }) {
 
 
     useEffect(() => {
-        if (!userInfo || !meetChannel) return;
+        if (!userInfo || !meetChannel || meet) return;
 
         meetChannel.bind('userJoined', function (data) {
-           console.log('fdskfsdjfsdjfndjsnfndsjk')
+            console.log(data)
             peer.current.connect(data.message)
             callPeer(data.message);
         });
@@ -175,6 +175,7 @@ function MeetingPage({ pusher }) {
             console.error('Local stream is not available.');
             return;
         }
+        console.log('heresjkjksjdksjkdjksjkdskdk')
         const conn = peer.current.connect(peerId);
         const call = peer.current.call(peerId, localStream);
         call.on('stream', (remoteStream) => {
@@ -182,12 +183,11 @@ function MeetingPage({ pusher }) {
         });
         call.on('close', () => {
             console.log(`Call with ${peerId} has ended.`);
-            // Handle call end if needed
         });
 
         call.on('error', (error) => {
             console.error(`Error calling peer ${peerId}:`, error);
-            // Handle call error if needed
+           
         });
     }, [localStream])
     function createBlackVideoTrack({ width = 640, height = 480 } = {}) {
@@ -447,7 +447,7 @@ function MeetingPage({ pusher }) {
                         </div>
                     </div>
                     {
-                        meet &&
+                        meet && localStream &&
                         <div className="controls text-white text-lg md:text-xl lg:text-3xl flex w-full justify-center gap-3 z-20 ">
                             <div className='rounded-full p-2 bg-gray-700'>
                                 {video ? <BsFillCameraVideoOffFill className='text-red-500 cursor-pointer' onClick={() => setVideo(false)} />
