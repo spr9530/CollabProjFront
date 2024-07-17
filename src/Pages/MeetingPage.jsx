@@ -12,12 +12,10 @@ import { FaPaperPlane } from "react-icons/fa";
 
 
 function MeetingPage({ pusher }) {
-    const myVideoRef = useRef(null);
-    const userVideoRefs = useRef({});
     const navigate = useNavigate();
-
     const peer = useRef(null);
     const [userInfo, setUserInfo] = useState(null);
+    const [meet, setMeet] = useState(false);
     const [myId, setMyId] = useState(null);
     const [peerIds, setPeerIds] = useState([]);
     const { roomCode } = useParams();
@@ -28,7 +26,7 @@ function MeetingPage({ pusher }) {
     const [screen, setScreen] = useState(false)
     const [localStream, setLocalStream] = useState(null);
     const [localMssg, setLocalMssg] = useState('')
-    const [messages, setMessages] = useState([{ sender: 'local', message: 'hello' }, { sender: 'streamer', message: 'hello' }])
+    const [messages, setMessages] = useState([])
 
 
 
@@ -50,25 +48,19 @@ function MeetingPage({ pusher }) {
         fetchUserInfo();
     }, [fetchUserInfo]);
 
-    useEffect(() => {
-        const startMedia = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                setLocalStream(stream);
-            } catch (error) {
-                console.error('Error accessing media devices:', error);
+    const startMedia = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            setLocalStream(stream);
+            if (userInfo && socketId) {
+                triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userJoined', message: `${userInfo._id}`, socketId });
             }
-        };
 
-        startMedia();
-
-
-        return () => {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
-        };
-    }, []);
+        } catch (error) {
+            console.error('Error accessing media devices:', error);
+        }
+        setMeet(true);
+    };
 
     useEffect(() => {
         if (pusher && pusher.connection) {
@@ -89,14 +81,6 @@ function MeetingPage({ pusher }) {
     }, [pusher, roomCode]);
 
     useEffect(() => {
-        if (!socketId && !userInfo) return;
-
-        if (userInfo && socketId) {
-            triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userJoined', message: `${userInfo._id}`, socketId });
-        }
-    }, [socketId, userInfo, roomCode]);
-
-    useEffect(() => {
         if (!userInfo) return;
         setMyId(userInfo._id);
     }, [userInfo]);
@@ -104,47 +88,49 @@ function MeetingPage({ pusher }) {
 
     useEffect(() => {
         if (!myId || !socketId) return;
-    
+
         const peerInstance = new Peer(`${myId}`, {
-          host: 'collabproject-2.onrender.com',
-          secure: true,
-          port: 443,
-          path: '/app/v1/room/meeting',
-          debug: 3,
+            host: 'collabproject-2.onrender.com',
+            secure: true,
+            port: 443,
+            path: '/app/v1/room/meeting',
+            debug: 3,
         });
-    
+
         peerInstance.on('open', (id) => {
-          console.log('My Peer ID:', id);
+            console.log('My Peer ID:', id);
 
         });
 
-        peerInstance.on('connection', (conn)=>{
-            conn.on('open', function() {
+        peerInstance.on('connection', (conn) => {
+            conn.on('open', function () {
                 console.log('conn open');
             });
-            conn.on('data', function(data) {
-                setMessages((prevMessage)=>[...prevMessage, data])
+            conn.on('data', function (data) {
+                setMessages((prevMessage) => [...prevMessage, data])
             });
         })
-    
+
         peerInstance.on('call', (call) => {
-          call.answer(localStream);
-          const peerId = call.peer;
-          const conn = peerInstance.connect(call.peer);
-          call.on('stream', (remoteStream) => {
-            handlePeer({ peerId, remoteStream, calling: call, conn });
-          });
+            call.answer(localStream);
+            const peerId = call.peer;
+            const conn = peerInstance.connect(call.peer);
+            call.on('stream', (remoteStream) => {
+                handlePeer({ peerId, remoteStream, calling: call, conn });
+            });
         });
-    
+
         peer.current = peerInstance;
-    
+
         return () => {
-          if (userInfo) {
-            triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userLeft', message: `${userInfo._id}`, socketId });
-          }
-          peerInstance.destroy();
+            if (userInfo) {
+                triggerEditEvent({ channel: `meet-${roomCode}`, event: 'userLeft', message: `${userInfo._id}`, socketId });
+            }
+            if (localStream && localStream.getTracks()) localStream.getTracks().forEach(track => track.stop())
+            peerInstance.destroy();
+            window.location.reload()
         };
-      }, [myId, socketId, roomCode])
+    }, [myId, socketId, roomCode])
 
     const handlePeer = useCallback(({ peerId, remoteStream, calling, conn }) => {
         setPeerIds((prevPeerIds) => {
@@ -242,99 +228,102 @@ function MeetingPage({ pusher }) {
             });
         });
     };
-
     useEffect(() => {
-        const handleToggleVideo = () => {
-            if (!video && !audio && !screen) {
-                streamNullMedia();
-            } else if (!screen) {
-                const constraints = { video: video, audio: audio };
-                navigator.mediaDevices.getUserMedia(constraints)
-                    .then((stream) => {
-                        const videoTrack = video ? stream.getVideoTracks()[0] : createBlackVideoTrack();
-                        const audioTrack = audio ? stream.getAudioTracks()[0] : createSilentAudioTrack();
-                        setLocalStream(new MediaStream([audioTrack, videoTrack])); // Update local state with the correct stream
+        if (meet) {
+            handleToggleVideo()
+        }
+    }, [audio, video, screen])
+    
+    const handleToggleVideo = () => {
+        if (!video && !audio && !screen) {
+            streamNullMedia();
+        } else if (!screen) {
+            const constraints = { video: video, audio: audio };
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then((stream) => {
+                    const videoTrack = video ? stream.getVideoTracks()[0] : createBlackVideoTrack();
+                    const audioTrack = audio ? stream.getAudioTracks()[0] : createSilentAudioTrack();
+                    setLocalStream(new MediaStream([audioTrack, videoTrack])); // Update local state with the correct stream
 
-                        peerIds.forEach((peer) => {
-                            const senders = peer.calling.peerConnection.getSenders();
-                            let videoSender = senders.find((s) => s.track && s.track.kind === 'video');
-                            let audioSender = senders.find((s) => s.track && s.track.kind === 'audio');
+                    peerIds.forEach((peer) => {
+                        const senders = peer.calling.peerConnection.getSenders();
+                        let videoSender = senders.find((s) => s.track && s.track.kind === 'video');
+                        let audioSender = senders.find((s) => s.track && s.track.kind === 'audio');
 
-                            if (videoSender) {
-                                if (!video) {
-                                    videoSender.replaceTrack(createBlackVideoTrack());
-                                } else {
+                        if (videoSender) {
+                            if (!video) {
+                                videoSender.replaceTrack(createBlackVideoTrack());
+                            } else {
+                                videoSender.replaceTrack(videoTrack);
+                            }
+                        } else {
+                            let newVideoSender = senders.find((s) => s.track == null && s.kind === 'video');
+                            if (newVideoSender) newVideoSender.replaceTrack(videoTrack);
+                        }
+
+                        if (audioSender) {
+                            audioSender.replaceTrack(audioTrack);
+                        } else {
+                            let newAudioSender = senders.find((s) => s.track == null && s.kind === 'audio');
+                            if (newAudioSender) newAudioSender.replaceTrack(audioTrack);
+                        }
+                    });
+                })
+                .catch((error) => {
+                    console.error('Error accessing media devices:', error);
+                });
+        }
+        else if (screen) {
+            navigator.mediaDevices.getDisplayMedia({ video: true })
+                .then((screenStream) => {
+                    const videoTrack = screenStream.getVideoTracks()[0];
+
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then((audioStream) => {
+                            const audioTrack = audio ? audioStream.getAudioTracks()[0] : createSilentAudioTrack()
+
+                            const combinedStream = new MediaStream([videoTrack, audioTrack]);
+                            setLocalStream(combinedStream);
+
+                            peerIds.forEach((peer) => {
+                                const senders = peer.calling.peerConnection.getSenders();
+                                const videoSender = senders.find((s) => s.track && s.track.kind === 'video');
+                                const audioSender = senders.find((s) => s.track && s.track.kind === 'audio');
+
+                                if (videoSender) {
                                     videoSender.replaceTrack(videoTrack);
+                                } else {
+                                    const newVideoSender = senders.find((s) => s.track == null && s.kind === 'video');
+                                    if (newVideoSender) newVideoSender.replaceTrack(videoTrack);
                                 }
-                            } else {
-                                let newVideoSender = senders.find((s) => s.track == null && s.kind === 'video');
-                                if (newVideoSender) newVideoSender.replaceTrack(videoTrack);
-                            }
 
-                            if (audioSender) {
-                                audioSender.replaceTrack(audioTrack);
-                            } else {
-                                let newAudioSender = senders.find((s) => s.track == null && s.kind === 'audio');
-                                if (newAudioSender) newAudioSender.replaceTrack(audioTrack);
-                            }
-                        });
-                    })
-                    .catch((error) => {
-                        console.error('Error accessing media devices:', error);
-                    });
-            }
-            else if (screen) {
-                navigator.mediaDevices.getDisplayMedia({ video: true })
-                    .then((screenStream) => {
-                        const videoTrack = screenStream.getVideoTracks()[0];
-
-                        navigator.mediaDevices.getUserMedia({ audio: true })
-                            .then((audioStream) => {
-                                const audioTrack = audio ? audioStream.getAudioTracks()[0] : createSilentAudioTrack()
-
-                                const combinedStream = new MediaStream([videoTrack, audioTrack]);
-                                setLocalStream(combinedStream);
-
-                                peerIds.forEach((peer) => {
-                                    const senders = peer.calling.peerConnection.getSenders();
-                                    const videoSender = senders.find((s) => s.track && s.track.kind === 'video');
-                                    const audioSender = senders.find((s) => s.track && s.track.kind === 'audio');
-
-                                    if (videoSender) {
-                                        videoSender.replaceTrack(videoTrack);
-                                    } else {
-                                        const newVideoSender = senders.find((s) => s.track == null && s.kind === 'video');
-                                        if (newVideoSender) newVideoSender.replaceTrack(videoTrack);
-                                    }
-
-                                    if (audioSender) {
-                                        audioSender.replaceTrack(audioTrack);
-                                    } else {
-                                        const newAudioSender = senders.find((s) => s.track == null && s.kind === 'audio');
-                                        if (newAudioSender) newAudioSender.replaceTrack(audioTrack);
-                                    }
-                                });
-                            })
-                            .catch((error) => {
-                                console.error('Error accessing audio devices:', error);
+                                if (audioSender) {
+                                    audioSender.replaceTrack(audioTrack);
+                                } else {
+                                    const newAudioSender = senders.find((s) => s.track == null && s.kind === 'audio');
+                                    if (newAudioSender) newAudioSender.replaceTrack(audioTrack);
+                                }
                             });
-                    })
-                    .catch((error) => {
-                        console.error('Error accessing display media:', error);
-                    });
+                        })
+                        .catch((error) => {
+                            console.error('Error accessing audio devices:', error);
+                        });
+                })
+                .catch((error) => {
+                    console.error('Error accessing display media:', error);
+                });
 
-            }
-        };
-        handleToggleVideo();
-    }, [audio, video, screen]);
+        }
+    };
+
 
     const sendMessage = (message) => {
-        peerIds.forEach((id)=>{
-            setMessages((prevMessage)=>[...prevMessage, { sender: 'local', message: message }]);
-            id.conn.send({sender:'streamer', message:message})
+        peerIds.forEach((id) => {
+            setMessages((prevMessage) => [...prevMessage, { sender: 'local', message: message }]);
+            id.conn.send({ sender: 'streamer', message: message })
             setLocalMssg('')
         })
-      };
+    };
     const handleScale = (id) => {
         setPeerIds(peerIds.map((peer) => {
             if (peer.peerId != id && peer.isScaled == true) {
@@ -362,16 +351,24 @@ function MeetingPage({ pusher }) {
             return peer;
         }))
     }
+    const leavemeet = () => {
+        const handleLeaveRoom = () => {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+        };
+        handleLeaveRoom()
+        window.location.reload()
+        setMeet(false);
+    }
 
-    if (!socketId && !localStream) {
+    if (!socketId && !userInfo) {
         return <div>Loading...</div>;
     }
 
     return (
         <div className='bg-primaryBackground relative'>
-            {
-                peerIds.length == 0 && <h1 className='text-white text-xl p-3'>Waiting to join.....</h1>
-            }
+            
             <div className="controls absolute text-white text-3xl flex gap-3 z-20">
                 <div className='rounded-full p-2 bg-gray-700'>
                     {video ? <BsFillCameraVideoOffFill className='text-red-500 cursor-pointer' onClick={() => setVideo(false)} />
@@ -385,7 +382,12 @@ function MeetingPage({ pusher }) {
                 <div className=' rounded-full p-2 bg-gray-700'>
                     {screen ? <MdStopScreenShare className='text-red-500 cursor-pointer' onClick={() => setScreen(false)} /> : <MdScreenShare className='cursor-pointer' onClick={() => { setScreen(true), setVideo(false) }} />}
                 </div>
-
+                <div className=' rounded-full p-2 bg-gray-700'>
+                    <button onClick={leavemeet}>Leave</button>
+                </div>
+                <div className=' rounded-full p-2 bg-gray-700'>
+                    <button onClick={() => startMedia()}>Ready</button>
+                </div>
             </div>
             <div>
                 <div className='flex  w-full h-full justify-center relative'>
@@ -442,11 +444,11 @@ function MeetingPage({ pusher }) {
                                 <div className='bg-gray-800 rounded-md p-2 w-full flex gap-2'>
                                     <textarea
                                         placeholder="Type something..."
-                                        value = {localMssg}
-                                        onChange = {(e)=>setLocalMssg(e.target.value)}
+                                        value={localMssg}
+                                        onChange={(e) => setLocalMssg(e.target.value)}
                                         className="bg-transparent text-white outline-none w-10/12 resize-none h-10 max-h-40 p-2 border border-gray-300 rounded-md scrollbar-none"
                                     />
-                                    <div className='text-purple-600 bg-primaryBackground w-fit flex items-center justify-center rounded-full p-2' onClick={()=>sendMessage(localMssg)}>
+                                    <div className='text-purple-600 bg-primaryBackground w-fit flex items-center justify-center rounded-full p-2' onClick={() => sendMessage(localMssg)}>
                                         <FaPaperPlane className='-ml-1' />
                                     </div>
                                 </div>
