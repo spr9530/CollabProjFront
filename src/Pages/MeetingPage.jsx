@@ -138,7 +138,7 @@ function MeetingPage({ pusher }) {
 
     const handlePeer = useCallback(({ peerId, remoteStream, calling, conn }) => {
         setPeerIds((prevPeerIds) => {
-            console.log(prevPeerIds)
+            
             const existingPeer = prevPeerIds.find((peer) => peer.peerId === peerId);
             if (existingPeer) {
                 existingPeer.stream = remoteStream;
@@ -154,10 +154,9 @@ function MeetingPage({ pusher }) {
         if (!userInfo || !meetChannel) return;
 
         meetChannel.bind('userJoined', function (data) {
-           if(meet){
+           console.log('fdskfsdjfsdjfndjsnfndsjk')
             peer.current.connect(data.message)
             callPeer(data.message);
-           }
         });
 
         meetChannel.bind('userLeft', function (data) {
@@ -369,6 +368,9 @@ function MeetingPage({ pusher }) {
         window.location.reload()
         setMeet(false);
     }
+    useEffect(()=>{
+        console.log(peerIds)
+    },[peerIds])
 
     if (!socketId && !userInfo) {
         return <div>Loading...</div>;
