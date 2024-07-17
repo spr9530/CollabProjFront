@@ -138,6 +138,7 @@ function MeetingPage({ pusher }) {
 
     const handlePeer = useCallback(({ peerId, remoteStream, calling, conn }) => {
         setPeerIds((prevPeerIds) => {
+            console.log(prevPeerIds)
             const existingPeer = prevPeerIds.find((peer) => peer.peerId === peerId);
             if (existingPeer) {
                 existingPeer.stream = remoteStream;
@@ -153,9 +154,10 @@ function MeetingPage({ pusher }) {
         if (!userInfo || !meetChannel) return;
 
         meetChannel.bind('userJoined', function (data) {
-            alert(data.message);
+           if(meet){
             peer.current.connect(data.message)
             callPeer(data.message);
+           }
         });
 
         meetChannel.bind('userLeft', function (data) {
