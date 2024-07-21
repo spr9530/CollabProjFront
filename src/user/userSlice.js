@@ -1,51 +1,94 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { checkUser, userLogginApi } from './userApi';
+import { getLoggedUser, updateUserRoom, userLogginApi } from './userApi';
 
 const initialState = {
-    loggedInUser: [],
+    loggedInUser: null, // Make sure this is the correct initial state
+    userRooms: null,
     loading: false,
     error: null
-}
+};
 
-const userLogginAsync = createAsyncThunk(
+export const userLogginAsync = createAsyncThunk(
     'user/userLoggin',
-    async(userCredentials) =>{
+    async (userCredentials) => {
         const response = await userLogginApi(userCredentials);
         localStorage.setItem('token', response.data.token);
         return response.data.user;
     }
-)
+);
 
+export const getLoggedUserAsync = createAsyncThunk(
+    'user/getLoggedUserAsync',
+    async () => {
+        const response = await getLoggedUser();
+        return response.data.userInfo;
+    }
+);
+
+export const updateUserAsync = createAsyncThunk(
+    'user/updateUserAsync',
+    async(rooms) => {
+        const response = await updateUserRoom(rooms);
+        return response.data.userInfo.rooms;
+    }
+)
 
 const userSlice = createSlice({
     name: 'user',
     initialState,
-    reducers:{
+    reducers: {
         setUserInfo: (state, action) => {
-            state.userInfo = action.payload;
-        },
+            state.loggedInUser = action.payload;
+        }
     },
-    extraReducers:(builder) =>{
-        builder.addCase(userLogginAsync.pending,(state)=>{
-            state.loading = true;
-            state.error = null;
-        } )
-        builder.addCase(userLogginAsync.fulfilled, (state, action)=>{
-            state.loading = false;
-            state.loggedInUser.push(action.payload);
-            state.error = null;
-        })
-        builder.addCase(userLogginAsync.rejected, (state, action)=>{
-            state.loading = false;
-            state.error = action.error.message;
-        })
+    extraReducers: (builder) => {
+        builder
+            .addCase(userLogginAsync.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(userLogginAsync.fulfilled, (state, action) => {
+                state.loading = false;
+                state.loggedInUser = action.payload; // Directly set the user info
+                state.error = null;
+            })
+            .addCase(userLogginAsync.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error.message;
+            })
+            .addCase(getLoggedUserAsync.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(getLoggedUserAsync.fulfilled, (state, action) => {
+                state.loading = false;
+                state.loggedInUser = action.payload;
+                state.userRooms = state.loggedInUser.rooms
+                state.error = null;
+            })
+            .addCase(getLoggedUserAsync.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error.message;
+            })
+            .addCase(updateUserAsync.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(updateUserAsync.fulfilled, (state, action) => {
+                state.loading = false;
+                state.userRooms = action.payload;
+                state.error = null;
+            })
+            .addCase(updateUserAsync.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error.message;
+            });
     }
-})
-
-export {userLogginAsync};
+});
 
 export const { setUserInfo } = userSlice.actions;
 
-export const getUser = (state) => state.user.loggedInUser
+export const getUser = (state) => state.user.loggedInUser;
+export const getUserRoom = (state) => state.user.userRooms;
 
-export default userSlice.reducer
+export default userSlice.reducer;
