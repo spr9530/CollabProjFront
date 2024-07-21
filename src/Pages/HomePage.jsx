@@ -1,40 +1,37 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import Temp from '../components/Temp'
+import React, { useCallback, useEffect, useState } from 'react'
 import { FaCircleArrowRight } from "react-icons/fa6";
-import { FaRegBell } from "react-icons/fa";
 import { IoCloseCircle } from "react-icons/io5";
 import { FaCirclePlus } from "react-icons/fa6";
 import { IoMdPeople } from "react-icons/io";
-import { FaPencilRuler } from "react-icons/fa";
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { getUserInfo, updateUserApi } from '../user/userApi';
+// import { updateUserApi } from '../user/userApi';
 import { createRoomApi, roomPermission } from '../roomSlice/RoomApi';
 import { triggerEvent } from '../socket/trigger';
+import { useDispatch, useSelector } from 'react-redux';
+import { getLoggedUserAsync, getUser, getUserRoom, updateUserAsync } from '../user/userSlice';
 
 
 
-function HomePage({pusher }) {
+function HomePage({ pusher }) {
 
 
 
     const [joinRoomDisplay, setJoinRoomDisplay] = useState('hidden')
     const [createRoomDisplay, setCreateRoomDisplay] = useState('hidden')
-    const [userInfo, setUserInfo] = useState(null)
+    const [set, setSet] = useState('Rooms')
     const navigate = useNavigate()
+    const dispatch = useDispatch();
+    const userInfo = useSelector(getUser)
+    const roomInfo = useSelector(getUserRoom)
 
 
 
     useEffect(() => {
-        const getUser = async () => {
-            const userInfo = await getUserInfo()
-            if (userInfo.error) {
-                navigate('/login', { replace: true })
-            }
-            setUserInfo(userInfo)
-        }
-        getUser()
-    }, [])
+        dispatch(getLoggedUserAsync());
+    }, [dispatch])
+
+
 
     const handleJoinRoom = useCallback((e) => {
         e.preventDefault();
@@ -57,33 +54,94 @@ function HomePage({pusher }) {
         <>
             <Navbar />
             <JoinRoom visible={joinRoomDisplay} setVisible={setJoinRoomDisplay} user={userInfo} pusher={pusher} />
-            <CreateRoom user={userInfo} visible={createRoomDisplay} setVisible={setCreateRoomDisplay} setUser={setUserInfo} />
+            <CreateRoom user={userInfo} visible={createRoomDisplay} setVisible={setCreateRoomDisplay} />
             <div>
-                <div className='bg-primaryBackground w-full flex gap-2 justify-center '>
-                    <div className='w-full flex shadow-primaryBoxShadow m-2 p-4 rounded-md h-screen overflow-scroll scrollbar-none'>
-                        <div className='w-1/2 bg-secondaryBackground p-4 rounded-md m-2'>
-                            <div className='flex w-full justify-between'>
-                                <h2 className='text-white text-3xl font-bold'>Rooms</h2>
-                                <div className='flex gap-2'>
+                <div className='bg-primaryBackground w-full flex  gap-2 justify-center '>
+                    <div className='w-full flex flex-col md:flex-row shadow-primaryBoxShadow m-2 p-2 md:p-4 rounded-md h-screen overflow-scroll scrollbar-none'>
+                        <div className={`md:w-1/2 bg-secondaryBackground transition ease-in-out p-3 md:p-4 rounded-md m-2 h-screen ${set == 'Rooms' ? 'visible' : 'hidden'} md:block`}>
+                            <div className='flex flex-wrap w-full justify-between'>
+                                <div className='flex w-full gap-3 '>
+                                    <h2
+                                        className='text-white text-2xl font-bold border-b-2 border-white md:border-none'>
+                                        Room
+                                    </h2>
+                                    <h2
+                                        onClick={() => setSet('todo')}
+                                        className='text-gray-500 text-2xl font-bold md:hidden'>
+                                        To Do
+                                    </h2>
+                                </div>
+                                <div className='flex gap-2 mt-4'>
                                     <button className='bg-primaryBlue text-white p-1 px-3 rounded-lg flex items-center gap-1' onClick={(e) => handleJoinRoom(e)}>Join Room <span><IoMdPeople /></span></button>
                                     <button className='bg-primaryGreen text-white p-1 px-3 rounded-lg flex items-center gap-1' onClick={(e) => handleCreateRoom(e)}>Create Room <span><FaCirclePlus /></span></button>
                                 </div>
                             </div>
-                            <div className='flex flex-wrap gap-3 my-2'>
-                                {userInfo.rooms[0] ? userInfo.rooms.map((room, index) => (
-                                    <div key={index} onClick={() => { handleRoomCard(room) }}>
+                            <div className='flex flex-wrap gap-3 my-1 w-full p-1 md:p-3 max-h-[85%] overflow-scroll scrollbar-none '>
+                                {roomInfo ? roomInfo.map((room, index) => (
+                                    <div key={index} className='w-full sm:w-[48%] 2xl:w-[31%] h-fit' onClick={() => { handleRoomCard(room) }}>
                                         <RoomInfoCard room={room} />
                                     </div>
                                 )) : <div className='w-full h-full flex justify-center items-center text-gray-500 m-4'>No Rooms Avaialable</div>}
 
                             </div>
                         </div>
-                        <div className='w-1/2 bg-secondaryBackground p-4 rounded-md m-2'>
-                            <div className='flex w-full justify-between'>
-                                <h2 className='text-white text-3xl font-bold'>Tasks</h2>
-                            </div>
-                            <div className='flex flex-wrap gap-3 my-2'>
+                        <div className={`md:w-1/2 bg-secondaryBackground p-3 md:p-4 rounded-md m-2 h-screen  ${set == 'todo' ? 'visible' : 'hidden'} md:block`}>
+                            <div className='flex flex-col w-full justify-between'>
+                                <div className='flex w-full gap-3'>
+                                    <h2
+                                        onClick={() => setSet('Rooms')}
+                                        className=' text-gray-500  text-2xl font-bold md:hidden'>
+                                        Room
+                                    </h2>
+                                    <h2
+                                        className='text-white text-2xl font-bold border-b-2 border-white md:border-none'>
+                                        To Do
+                                    </h2>
 
+                                </div>
+                                <div>
+                                    <h2
+                                        className='text-white text-2xl font-bold'>
+                                        Progress Bar
+                                    </h2>
+                                    <div className='my-1 w-full p-3 h-fit relative'>
+                                        <div className='absolute -top-3 right-3 text-white font-bold'>50%</div>
+                                        <div className='w-full bg-white rounded-xl h-5' >
+                                            <div className='w-1/2 bg-green-500 h-full rounded-xl'>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className='flex w-full h-full max-h-[78%] overflow-scroll scrollbar-none'>
+                                <div className='flex flex-col w-full gap-3 ' >
+                                    <div className='bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col'>
+                                        <p>Task name</p>
+                                        <p>Room Name</p>
+                                        <button>View</button>
+                                    </div>
+                                    <div className='bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col'>
+                                        <p>Task name</p>
+                                        <p>Room Name</p>
+                                        <button>View</button>
+                                    </div>
+                                    <div className='bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col'>
+                                        <p>Task name</p>
+                                        <p>Room Name</p>
+                                        <button>View</button>
+                                    </div>
+                                    <div className='bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col'>
+                                        <p>Task name</p>
+                                        <p>Room Name</p>
+                                        <button>View</button>
+                                    </div>
+                                    <div className='bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col'>
+                                        <p>Task name</p>
+                                        <p>Room Name</p>
+                                        <button>View</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -94,10 +152,10 @@ function HomePage({pusher }) {
     )
 }
 
-function RoomInfoCard({ room }) {
+function RoomInfoCard({ room}) {
     const admin = room.users.find((user) => (user.role === 'Admin' ? user.userId : 'd'))
     return (
-        <div className='group h-[150px] w-[150px] rounded-md bg-primaryBackground p-2 transform  hover:scale-105 transition-all duration-800 cursor-pointer'>
+        <div className='group h-[150px] w-full rounded-md bg-primaryBackground p-2 transform  hover:scale-105 transition-all duration-800 cursor-pointer'>
             <div className='flex flex-col justify-between h-full  p-2'>
                 <div>
                     <h3 className='text-white text-xl font-semibold'>{room.roomName}</h3>
@@ -111,26 +169,14 @@ function RoomInfoCard({ room }) {
     )
 }
 
-// function Notification() {
-//     return (
-//         <div className=' h-fit w-full rounded-md bg-[#ffffffcf] p-2cursor-pointer'>
-//             <div className='flex flex-col justify-between h-full  p-2'>
-//                 <div>
-//                     <h3 className='text-primaryBackground text-md font-semibold'>from</h3>
-//                 </div>
-//                 <p className='text-secondaryBackground text-[8px]'>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Repudiandae sunt, aut illo praesentium repellendus ad?</p>
-//             </div>
-//         </div>
-//     )
-// }
 
 function JoinRoom({ visible, setVisible, user, pusher }) {
 
-    const navigate = useNavigate()
     const [code, setCode] = useState('')
     const [joinBtn, setJoinBtn] = useState('Join')
-
     const [channel, setChannel] = useState(null)
+    const dispatch = useDispatch();
+
     useEffect(() => {
         console.log('cc')
     }, [pusher])
@@ -138,7 +184,6 @@ function JoinRoom({ visible, setVisible, user, pusher }) {
     const handleUserJoin = async (code) => {
         try {
             setJoinBtn('Wait...');
-
             const response = await roomPermission({ roomCode: code, user });
             setChannel(pusher.subscribe(`${code}`))
             triggerEvent({
@@ -146,22 +191,25 @@ function JoinRoom({ visible, setVisible, user, pusher }) {
                 event: `updateRequests`,
                 message: `updateRequests`,
             })
-
-
-
         } catch (error) {
             console.error('An error occurred:', error);
         }
     }
 
+    const handleClose = () => {
+        setCode('')
+        setVisible('hidden')
+        setJoinBtn('Join')
+    }
+
     useEffect(() => {
-        if (!channel) return ;
+        if (!channel) return;
         channel.bind('reqstAccecpted', function (data) {
-                updateUserRooms();
+            updateUserRooms();
         });
         const updateUserRooms = async () => {
             let rooms = [...user.rooms, { _id: roomId }];
-            const updateUser = await updateUserApi(rooms);
+            dispatch(updateUserAsync(rooms))
         }
         return () => {
             channel.unbind_all();
@@ -171,21 +219,21 @@ function JoinRoom({ visible, setVisible, user, pusher }) {
 
 
     return (
-        <div className={`h-[200px] w-7/12 rounded-md fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-primaryBackground z-20 p-3 flex flex-col ${visible}`}>
+        <div className={`h-[200px] w-full md:w-7/12 rounded-md fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-primaryBackground z-20 p-3 flex flex-col ${visible}`}>
             <div className='w-full p-2 flex justify-between'>
                 <h2 className='text-white text-4xl font-bold'>Join Room</h2>
-                <button onClick={() => setVisible('hidden')}> <IoCloseCircle className='text-white text-xl' /></button>
+                <button onClick={() => handleClose()}> <IoCloseCircle className='text-white text-xl' /></button>
             </div>
             <div className='flex gap-3 h-full items-center p-2'>
-                <input className='rounded-lg py-3 px-2 bg-secondaryBackground text-white w-9/12 outline-none' type="text" placeholder='Enter Room Code' onChange={(e) => setCode(e.target.value)} />
+                <input className='rounded-lg py-3 px-2 bg-secondaryBackground text-white w-9/12 outline-none' value={code} type="text" placeholder='Enter Room Code' onChange={(e) => setCode(e.target.value)} />
                 <button className='rounded-lg py-3 px-2 bg-primaryBlue text-white w-3/12' onClick={() => { handleUserJoin(code) }}>{joinBtn}</button>
             </div>
-            <p className='text-red-600 p-2'>Please fill code properly</p>
+            {/* <p className='text-red-600 p-2'>Please fill code properly</p> */}
         </div>
     )
 }
 
-function CreateRoom({ user, visible, setVisible, setUser }) {
+function CreateRoom({ user, visible, setVisible }) {
 
     const [createBtn, setCreateBtn] = useState('Create');
     const [createBtnProp, setCreateBtnProp] = useState('');
@@ -193,10 +241,9 @@ function CreateRoom({ user, visible, setVisible, setUser }) {
     const [roomInfo, setRoomInfo] = useState(null)
     const [roomName, setRoomName] = useState(null)
     const [error, setError] = useState(null)
+    const dispatch = useDispatch();
 
     const navigate = useNavigate();
-
-
 
     const createRoom = async (code) => {
         try {
@@ -205,10 +252,7 @@ function CreateRoom({ user, visible, setVisible, setUser }) {
                 roomName,
             });
             setRoomInfo(createRoom)
-
             setError(null);
-
-
         } catch (error) {
             console.error('An unexpected error occurred:', error);
             setError('An unexpected error occurred');
@@ -217,14 +261,9 @@ function CreateRoom({ user, visible, setVisible, setUser }) {
 
     useEffect(() => {
         const updateUser = async () => {
-            console.log(roomInfo.roomInfo._id)
             try {
                 const rooms = [...user.rooms, { _id: roomInfo.roomInfo._id }];
-
-                const updateUser = await updateUserApi(rooms);
-
-                const response = await getUserInfo()
-                setUser(response)
+                dispatch(updateUserAsync(rooms))
             } catch (error) {
                 console.error('An unexpected error occurred:', error);
                 setError('An unexpected error occurred');
@@ -274,11 +313,8 @@ function CreateRoom({ user, visible, setVisible, setUser }) {
         setVisible('hidden')
     }
 
-
-
-
     return (
-        <div className={`h-fit w-7/12 rounded-md fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-primaryBackground z-20 p-3 flex flex-col ${visible}`}>
+        <div className={`h-fit w-full md:w-7/12 rounded-md fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-primaryBackground z-20 p-3 flex flex-col ${visible}`}>
             <div className='w-full p-2 flex justify-between'>
                 <h2 className='text-white text-4xl font-bold'>Create Room</h2>
                 <button onClick={() => { handleClose() }}> <IoCloseCircle className='text-white text-xl' /></button>
