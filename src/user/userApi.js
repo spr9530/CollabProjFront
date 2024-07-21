@@ -149,6 +149,39 @@ export const getUserInfo = async () => {
     }
 }
 
+
+export const getLoggedUser = () => {
+    return new Promise(async (resolve, reject) => {
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+            return reject({ error: 'Please Login first' });
+        }
+
+        try {
+            const response = await fetch('https://collab-project-indol.vercel.app/app/v1/user/getUserInfo', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                reject(error);
+            }
+
+            const data = await response.json();
+            resolve({ data });
+        } catch (error) {
+            reject(error);
+        }
+    });
+};
+
+
+
 export const updateUserApi = async (rooms) => {
     const token = localStorage.getItem('token')
     try {
@@ -169,6 +202,38 @@ export const updateUserApi = async (rooms) => {
     }
 }
 
+export const updateUserRoom = (rooms) => {
+    return new Promise(async (resolve, reject) => {
+        const token = localStorage.getItem('token');
 
-  
+        if (!token) {
+            return reject({ error: 'Please Login first' });
+        }
+
+        try {
+            const response = await fetch('https://collab-project-indol.vercel.app/app/v1/user/updateUser', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ rooms })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                return reject(error);
+            }
+
+            const data = await response.json();
+            resolve({data});
+        } catch (error) {
+            reject(error);
+        }
+    });
+};
+
+
+
+
 
