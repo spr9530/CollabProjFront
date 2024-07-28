@@ -48,6 +48,7 @@ function RoomPage({ pusher }) {
 
 
     //fetch UserInfo
+    
     const fetchUserInfo = useCallback(async () => {
         try {
             const userInfo = await getUserInfo();
@@ -146,21 +147,6 @@ function RoomPage({ pusher }) {
     useEffect(() => {
         triggerEvent({ channel: `${id1}`, event: `userJoind`, message: 'hello worl' })
     }, [id1])
-
-    // const handlePermissionGrant = async (e) => {
-    //     e.preventDefault();
-    //     try {
-    //         let users = [...roomInfo.users, { userId: askingUser._id, role: 'co-Admin', _id: askingUser._id }];
-    //         const updateRoom = await updateRoomUsers({ id2, users });
-    //         if (updateRoom.response) {
-    //             socket.emit('userAllowed', { code: roomInfo.roomCode, roomId: roomInfo._id });
-    //             setAskPermission(false);
-    //             setAskingUser('null');
-    //         }
-    //     } catch (error) {
-    //         console.error('Error updating room or user:', error);
-    //     }
-    // };
 
     const handleCreate = () => {
         setCreateDivVisibility('visible');
@@ -371,7 +357,7 @@ function RoomUsers({ roomInfo, admin, user, fetchRoomInfo }) {
                 </div>
                 <div className='w-2/12 flex justify-center gap-3 items-center'>
                     <div className='text-pink-500 text-xl flex flex-col items-center cursor-pointer'>
-                        <Link to={`/room/${id1}/meeting/${id2}`}>
+                        <Link to={`/room/${id1}/${id2}/meeting`}>
                             <FaVideo />
                             <span className='text-sm text-white'>Room Meet</span>
                         </Link>

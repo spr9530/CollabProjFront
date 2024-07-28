@@ -6,6 +6,20 @@
   --primary-green: #22c55e;
 }
 
+.scrollbar-trans::-webkit-scrollbar {
+  width: 12px;
+}
+
+.scrollbar-trans::-webkit-scrollbar-track {
+  background-color: transparent; 
+}
+
+.scrollbar-trans::-webkit-scrollbar-thumb {
+  background-color: rgb(69, 3, 107); 
+  border-radius: 6px; 
+}
+
+
 .scrollbar-none::-webkit-scrollbar {
   width: 4px;
   background-color: transparent;

@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getLoggedUser, updateUserRoom, userLogginApi } from './userApi';
 
 const initialState = {
-    loggedInUser: null, // Make sure this is the correct initial state
+    loggedInUser: null,
     userRooms: null,
     loading: false,
     error: null
@@ -49,7 +49,7 @@ const userSlice = createSlice({
             })
             .addCase(userLogginAsync.fulfilled, (state, action) => {
                 state.loading = false;
-                state.loggedInUser = action.payload; // Directly set the user info
+                state.loggedInUser = action.payload;
                 state.error = null;
             })
             .addCase(userLogginAsync.rejected, (state, action) => {

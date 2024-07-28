@@ -10,6 +10,11 @@ import { createRoomApi, roomPermission } from '../roomSlice/RoomApi';
 import { triggerEvent } from '../socket/trigger';
 import { useDispatch, useSelector } from 'react-redux';
 import { getLoggedUserAsync, getUser, getUserRoom, updateUserAsync } from '../user/userSlice';
+import { MdDelete } from "react-icons/md";
+import { deleteRoomAsync } from '../roomSlice/RoomSlice';
+import { getAllTaskAsync, getUserAllTask } from '../task/TaskSlice';
+import { useForm } from "react-hook-form"
+import { addTodoAsync, deleteTodoAsync, getTodoAsync, getTodoTasks, updateTodoAsync } from '../todo/todoSlice';
 
 
 
@@ -19,18 +24,35 @@ function HomePage({ pusher }) {
 
     const [joinRoomDisplay, setJoinRoomDisplay] = useState('hidden')
     const [createRoomDisplay, setCreateRoomDisplay] = useState('hidden')
+    const [createTask, setCreateTask] = useState('hidden');
     const [set, setSet] = useState('Rooms')
+    const [viewTasks, setViewTasks] = useState({});
     const navigate = useNavigate()
     const dispatch = useDispatch();
     const userInfo = useSelector(getUser)
     const roomInfo = useSelector(getUserRoom)
+    const taskInfo = useSelector(getUserAllTask)
+    const todos = useSelector(getTodoTasks)
+    const today = new Date().toISOString().split('T')[0];
 
-
+    const {
+        register,
+        handleSubmit,
+        watch,
+        formState: { errors },
+    } = useForm()
 
     useEffect(() => {
         dispatch(getLoggedUserAsync());
+        dispatch(getTodoAsync())
     }, [dispatch])
 
+
+    useEffect(() => {
+        if (userInfo) {
+            dispatch(getAllTaskAsync(userInfo._id))
+        }
+    }, [userInfo])
 
 
     const handleJoinRoom = useCallback((e) => {
@@ -47,7 +69,31 @@ function HomePage({ pusher }) {
         navigate(`/room/${room._id}/${room.roomCode}`);
     }, [navigate]);
 
-    if (!userInfo) {
+    
+    const toggleViewTask = (id, from) => {
+        if(from=="Self"){
+            setViewTasks((prevViewTasks) => ({
+                ...prevViewTasks,
+                [id]: !prevViewTasks[id],
+              }));
+        }
+        else{
+            // navigate(`/room/${roomInfo._id}/${roomInfo.roomCode}`);
+        }
+      };
+
+    const handleDeleteTask = async (id) => {
+        dispatch(deleteTodoAsync(id))
+    }
+
+    const handleUpdateTodo = (data, id) => {
+        const currDone = data.done;
+        const newData = {...data, done: !currDone};
+        dispatch(updateTodoAsync({newData, id}));
+    }
+
+
+    if (!userInfo && !roomInfo && !taskInfo) {
         return <>Loading....</>
     }
     return (
@@ -55,6 +101,56 @@ function HomePage({ pusher }) {
             <Navbar />
             <JoinRoom visible={joinRoomDisplay} setVisible={setJoinRoomDisplay} user={userInfo} pusher={pusher} />
             <CreateRoom user={userInfo} visible={createRoomDisplay} setVisible={setCreateRoomDisplay} />
+            <form onSubmit={handleSubmit((data) => {
+                dispatch(addTodoAsync(data))
+                setCreateTask('hidden')
+            })}>
+                <div className={`absolute rounded-md flex flex-col gap-2 w-full md:w-7/12 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 bg-primaryBackground p-3 ${createTask}`}>
+                    <div className='flex flex-col'>
+                        <input
+                            type="text"
+                            name="taskName"
+                            className='bg-transparent text-white outline-none border-2 border-gray-700 p-1 rounded-md'
+                            {...register('taskName', {
+                                required: "Task Name is required",
+                                minLength: { value: 3, message: "Task Name must be at least 3 characters long" }
+                            })}
+                            placeholder='Task Name'
+                        />
+                        {errors.taskName && <span className='text-red-500 text-sm'>{errors.taskName.message}</span>}
+                    </div>
+
+                    <div className='flex flex-col'>
+                        <input
+                            type="date"
+                            name="taskDate"
+                            className='bg-transparent text-white outline-none border-2 border-gray-700 p-1 rounded-md'
+                            {...register('taskDate', {
+                                required: "Task Date is required",
+                                validate: value => value >= today || "Date must be today or later"
+                            })}
+                            min={today}
+                        />
+                        {errors.taskDate && <span className='text-red-500 text-sm'>{errors.taskDate.message}</span>}
+                    </div>
+
+                    <div>
+                        <textarea
+                            id=""
+                            name="taskDescription"
+                            className='bg-transparent w-full text-white outline-none border-2 border-gray-700 p-1 rounded-md'
+                            {...register('taskDescription')}
+                            placeholder='Desciption'></textarea>
+                    </div>
+
+                    <div className='flex w-full justify-between'>
+                        <button type='submit' className='bg-green-500 text-white py-1 px-3 rounded-md'>Add</button>
+                        <button type='button' className='bg-red-500 text-white py-1 px-3 rounded-md' onClick={() => setCreateTask('hidden')}>Cancel</button>
+                    </div>
+                </div>
+            </form>
+
+
             <div>
                 <div className='bg-primaryBackground w-full flex  gap-2 justify-center '>
                     <div className='w-full flex flex-col md:flex-row shadow-primaryBoxShadow m-2 p-2 md:p-4 rounded-md h-screen overflow-scroll scrollbar-none'>
@@ -78,8 +174,8 @@ function HomePage({ pusher }) {
                             </div>
                             <div className='flex flex-wrap gap-3 my-1 w-full p-1 md:p-3 max-h-[85%] overflow-scroll scrollbar-none '>
                                 {roomInfo ? roomInfo.map((room, index) => (
-                                    <div key={index} className='w-full sm:w-[48%] 2xl:w-[31%] h-fit' onClick={() => { handleRoomCard(room) }}>
-                                        <RoomInfoCard room={room} />
+                                    <div key={index} className='w-full sm:w-[48%] 2xl:w-[31%] h-fit'>
+                                        <RoomInfoCard room={room} fn={handleRoomCard} />
                                     </div>
                                 )) : <div className='w-full h-full flex justify-center items-center text-gray-500 m-4'>No Rooms Avaialable</div>}
 
@@ -100,47 +196,43 @@ function HomePage({ pusher }) {
 
                                 </div>
                                 <div>
-                                    <h2
-                                        className='text-white text-2xl font-bold'>
-                                        Progress Bar
-                                    </h2>
-                                    <div className='my-1 w-full p-3 h-fit relative'>
-                                        <div className='absolute -top-3 right-3 text-white font-bold'>50%</div>
-                                        <div className='w-full bg-white rounded-xl h-5' >
-                                            <div className='w-1/2 bg-green-500 h-full rounded-xl'>
-
-                                            </div>
-                                        </div>
+                                    <div className='w-full flex justify-between my-4'>
+                                        <button className='bg-blue-500 text-white font-semibold py-1 px-3 rounded-md' onClick={() => setCreateTask('visible')}>Create</button>
                                     </div>
+
                                 </div>
                             </div>
                             <div className='flex w-full h-full max-h-[78%] overflow-scroll scrollbar-none'>
                                 <div className='flex flex-col w-full gap-3 ' >
-                                    <div className='bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col'>
-                                        <p>Task name</p>
-                                        <p>Room Name</p>
-                                        <button>View</button>
-                                    </div>
-                                    <div className='bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col'>
-                                        <p>Task name</p>
-                                        <p>Room Name</p>
-                                        <button>View</button>
-                                    </div>
-                                    <div className='bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col'>
-                                        <p>Task name</p>
-                                        <p>Room Name</p>
-                                        <button>View</button>
-                                    </div>
-                                    <div className='bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col'>
-                                        <p>Task name</p>
-                                        <p>Room Name</p>
-                                        <button>View</button>
-                                    </div>
-                                    <div className='bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col'>
-                                        <p>Task name</p>
-                                        <p>Room Name</p>
-                                        <button>View</button>
-                                    </div>
+                                    {todos && todos.map((todo) =>
+                                        <>
+                                            <div className={`bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col ${todo.done ? 'opacity-50': null}`}>
+                                                <p>{todo.from}</p>
+                                                <div className='flex w-full justify-between'>
+                                                    <p>{todo.name}</p>
+                                                    <p>{todo.date}</p>
+                                                </div>
+                                                <div className='flex w-full justify-between pt-4 '>
+                                                    <button
+                                                        className={`${viewTasks[todo._id] ? 'bg-red-500' : 'bg-pink-600'} rounded-md py-1 px-3`}
+                                                        onClick={() => toggleViewTask(todo._id, todo.from)}
+                                                    >
+                                                        {viewTasks[todo._id] ? 'Close' : 'View'}
+                                                    </button>
+                                                    <button className='bg-green-500 rounded-md py-1 px-3' onClick={()=> handleUpdateTodo(todo, todo._id)}>{todo.done? 'Undone': 'Done'}</button>
+                                                    <button className='bg-red-500 rounded-md py-1 px-3' onClick={() => handleDeleteTask(todo._id)}>Delete</button>
+                                                </div>
+                                                {todo.description && viewTasks[todo._id] && (
+                                                    <div className='w-full'>
+                                                        <div className='w-full'>
+                                                            <input type="text" className='w-full bg-transparent' disabled value={todo.description} />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -152,22 +244,70 @@ function HomePage({ pusher }) {
     )
 }
 
-function RoomInfoCard({ room}) {
+
+const RoomInfoCard = React.memo(({ room, fn }) => {
+    console.log(room)
     const admin = room.users.find((user) => (user.role === 'Admin' ? user.userId : 'd'))
+    const [showDelete, setShowDelete] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [curr, setCurr] = useState(null)
+    const dispatch = useDispatch();
+
+
+
+
+    const handleDeleteRoom = (roomId) => {
+        setCurr(roomId)
+        setShowDelete(true);
+    }
+    const confirmDelete = () => {
+        setLoading(true);
+        try {
+            dispatch(deleteRoomAsync(curr));
+            dispatch(getLoggedUserAsync());
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    }
     return (
-        <div className='group h-[150px] w-full rounded-md bg-primaryBackground p-2 transform  hover:scale-105 transition-all duration-800 cursor-pointer'>
-            <div className='flex flex-col justify-between h-full  p-2'>
-                <div>
-                    <h3 className='text-white text-xl font-semibold'>{room.roomName}</h3>
-                </div>
-                <div className='text-secondaryText text-sm'>
-                    <p>Created By:-</p>
-                    <span className='flex w-full items-center justify-between'>{admin.userId.userName}<FaCircleArrowRight className='group-hover:text-primaryBlue' /></span>
+        <>
+            {curr && !loading &&
+                <div
+                    className={`flex flex-col justify-between absolute h-[150px] w-[300px] z-30 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-md border-2 border-gray-600 bg-primaryBackground p-3 ${showDelete ? 'visible' : 'hidden'}`}>
+                    <div
+                        className='text-white font-bold text-lg '>
+                        Are you sure want to delete</div>
+                    <div className={`w-full flex justify-evenly ${loading ? 'hidden' : 'visible'}`}>
+                        <button onClick={() => setShowDelete(false)} className='text-white bg-green-500 rounded-md font-semibold p-2 flex items-center justify-between gap-1'>Cancel<IoCloseCircle /></button>
+                        <button onClick={confirmDelete} className='text-white bg-red-500 rounded-md font-semibold p-2 flex items-center justify-between gap-1'>Sure <MdDelete /></button>
+                    </div>
+
+                </div>}
+            {loading &&
+                <div className={`text-white text-center ${loading ? 'visible' : 'hidden'}`}>
+                    loading....
+                </div>}
+
+            <div className='group h-[150px] w-full rounded-md bg-primaryBackground p-2 transform  hover:scale-105 transition-all duration-800'>
+                <div className='flex flex-col justify-between h-full  p-2'>
+                    <div onClick={() => fn(room)} className='cursor-pointer h-1/2'>
+                        <h3 className='text-white text-xl font-semibold'>{room.roomName}</h3>
+                    </div>
+                    <div className='text-secondaryText text-sm'>
+                        <p>Created By:-</p>
+                        <span className='flex w-full items-center justify-between'>{admin.userId.userName}
+                            <button onClick={() => handleDeleteRoom(room._id)} >
+                                <MdDelete className='text-red-500 text-lg hover:scale-150 z-20 cursor-pointer' />
+                            </button>
+                            <FaCircleArrowRight className='group-hover:text-primaryBlue' /></span>
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     )
-}
+});
 
 
 function JoinRoom({ visible, setVisible, user, pusher }) {

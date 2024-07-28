@@ -1,4 +1,4 @@
-import { addRoomData, getRoomData, updateRoomUsers } from './RoomApi';
+import { addRoomData, deleteRoom, getRoomData, updateRoomUsers } from './RoomApi';
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
@@ -28,11 +28,20 @@ const addRoomDataAsync = createAsyncThunk(
     }
   )
 
+
   const updateRoomUsersAsync = createAsyncThunk(
     'room/updateRoomUsers',
     async(data)=>{
         const response = updateRoomUsers(data);
         return response.data
+    }
+  )
+
+  const deleteRoomAsync = createAsyncThunk(
+    'room/deleteRoom',
+    async(roomId)=>{
+        const response = await deleteRoom(roomId);
+        return response.data;
     }
   )
 
@@ -88,6 +97,20 @@ const roomSlice = createSlice({
                 state.error = action.error.message;
                 
             });
+            builder
+            .addCase(deleteRoomAsync.pending,(state)=>{
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(deleteRoomAsync.fulfilled,(state, action)=>{
+                state.loading = false;
+                state.roomInfo = action.payload;
+                console.log(state.roomInfo);
+            }) 
+            .addCase(deleteRoomAsync.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error.message;
+            });
     }
 });
 
@@ -96,6 +119,6 @@ export const { setRoomTextEditor, setRoomWhiteBoard, setRoomCodeEditor } = roomS
 
 export const selectRoomInfo = (state) => state.room.roomInfo;
 
-export { addRoomDataAsync, createRoomAsync, getRoomDataAsync,updateRoomUsersAsync }; 
+export { addRoomDataAsync, createRoomAsync, getRoomDataAsync,updateRoomUsersAsync, deleteRoomAsync }; 
 
 export default roomSlice.reducer;

@@ -322,3 +322,26 @@ export const downloadFiles = async ({ roomId }) => {
         return { error };
     }
 };
+
+export const deleteRoom = (roomId) =>{
+    return new Promise(async(resolve, reject) => {
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`http://localhost:5000/app/v1/room/${roomId}`,{
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+            })
+            if (!response.ok) {
+                reject({ error: await response.json() })
+            }
+
+            const data = await response.json();
+            resolve(data);
+        } catch (error) {
+            reject({ error })
+        }
+    })
+}

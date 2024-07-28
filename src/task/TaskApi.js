@@ -1,6 +1,6 @@
 export const createRoomTask = async (task) => {
   const token = localStorage.getItem('token');
-  
+
   try {
     const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/task/createTask`, {
       method: 'POST', // Use POST for creating new resources
@@ -49,8 +49,8 @@ export const getAllTask = (id) => {
   })
 }
 
-export const getUsersTask = ({id1, id2}) => {
-  return new Promise(async(resolve, reject) => {
+export const getUsersTask = ({ id1, id2 }) => {
+  return new Promise(async (resolve, reject) => {
     const token = localStorage.getItem('token');
     try {
       const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/task/userTask/${id1}/${id2}`, {
@@ -109,7 +109,7 @@ export const updateTaskStep = ({ id, taskStep }) => {
 }
 
 export const deleteUserTask = (id) => {
-  return new Promise(async(resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const token = localStorage.getItem('token');
 
     try {
@@ -128,7 +128,7 @@ export const deleteUserTask = (id) => {
         reject({ error: errorData.message || response.statusText });
 
       } else {
-        
+
         const data = await response.json();
         resolve(data);
 
@@ -139,4 +139,30 @@ export const deleteUserTask = (id) => {
     }
   })
 }
+
+export const getUserAllTasks = (id) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/app/v1/task/allTask/user/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return reject(errorData);
+      }
+
+      const data = await response.json();
+      resolve(data);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 

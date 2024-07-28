@@ -27,7 +27,7 @@ import Pusher from 'pusher-js';
   
 
 
-const socket = io('http://localhost:5000');
+// const socket = io('http://localhost:5000');
 
 
 const router = createBrowserRouter([
@@ -45,7 +45,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/creatRoom",
-    element: <CreateRoom socket={socket}/>,
+    element: <CreateRoom/>,
   },
   {
     path: "/room/:id1/:id2",
@@ -60,12 +60,12 @@ const router = createBrowserRouter([
     element:<EditorPage pusher={pusher}/>
   },
   {
-    path: "/room/:roomId/meeting/:roomCode",
+    path: "/room/:roomId/:roomCode/meeting",
     element:<MeetingPage pusher={pusher}/>
   },
   {
     path: "/room/temp",
-    element:<Temp socket={socket}/>
+    element:<Temp />
   },
 
 ]);
