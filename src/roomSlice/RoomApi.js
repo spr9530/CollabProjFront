@@ -327,7 +327,7 @@ export const deleteRoom = (roomId) =>{
     return new Promise(async(resolve, reject) => {
         try {
             const token = localStorage.getItem('token')
-            const response = await fetch(`http://localhost:5000/app/v1/room/${roomId}`,{
+            const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/room/${roomId}`,{
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
