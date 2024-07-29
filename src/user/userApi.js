@@ -149,7 +149,6 @@ export const getUserInfo = async () => {
     }
 }
 
-
 export const getLoggedUser = () => {
     return new Promise(async (resolve, reject) => {
         const token = localStorage.getItem('token');
@@ -179,8 +178,6 @@ export const getLoggedUser = () => {
         }
     });
 };
-
-
 
 export const updateUserApi = async (rooms) => {
     const token = localStorage.getItem('token')
@@ -226,7 +223,7 @@ export const updateUserRoom = (rooms) => {
             }
 
             const data = await response.json();
-            resolve({data});
+            resolve(data);
         } catch (error) {
             reject(error);
         }

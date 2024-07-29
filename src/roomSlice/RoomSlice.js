@@ -1,4 +1,4 @@
-import { addRoomData, deleteRoom, getRoomData, updateRoomUsers } from './RoomApi';
+import { addRoomData, createRoomApi, deleteRoom, getRoomData, updateRoomUsers } from './RoomApi';
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
@@ -16,7 +16,7 @@ const addRoomDataAsync = createAsyncThunk(
     async(info) => {
         const response = await createRoomApi(info)
         console.log(response)
-        return response.data;
+        return response.roomInfo;
     }
   )
 
@@ -47,6 +47,7 @@ const addRoomDataAsync = createAsyncThunk(
 
 const initialState = {
     roomInfo:null,
+    newRoom: null,
     allRooms:null,
     loading: false,
     error: null
@@ -110,7 +111,20 @@ const roomSlice = createSlice({
             .addCase(deleteRoomAsync.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.error.message;
-            });
+            })
+            .addCase(createRoomAsync.pending, (state)=>{
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(createRoomAsync.fulfilled,(state, action)=>{
+                state.loading = false;
+                state.roomInfo = action.payload;
+                state.newRoom = action.payload;
+            }) 
+            .addCase(createRoomAsync.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error.message;
+            })
     }
 });
 
@@ -118,6 +132,7 @@ const roomSlice = createSlice({
 export const { setRoomTextEditor, setRoomWhiteBoard, setRoomCodeEditor } = roomSlice.actions;
 
 export const selectRoomInfo = (state) => state.room.roomInfo;
+export const selectNewRoom  = (state) => state.room.newRoom;
 
 export { addRoomDataAsync, createRoomAsync, getRoomDataAsync,updateRoomUsersAsync, deleteRoomAsync }; 
 

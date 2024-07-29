@@ -29,7 +29,8 @@ export const updateUserAsync = createAsyncThunk(
     'user/updateUserAsync',
     async(rooms) => {
         const response = await updateUserRoom(rooms);
-        return response.data.userInfo.rooms;
+        console.log(response[0].rooms)
+        return response[0].rooms;
     }
 )
 

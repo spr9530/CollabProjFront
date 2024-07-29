@@ -11,7 +11,7 @@ import { triggerEvent } from '../socket/trigger';
 import { useDispatch, useSelector } from 'react-redux';
 import { getLoggedUserAsync, getUser, getUserRoom, updateUserAsync } from '../user/userSlice';
 import { MdDelete } from "react-icons/md";
-import { deleteRoomAsync } from '../roomSlice/RoomSlice';
+import { createRoomAsync, deleteRoomAsync, selectNewRoom } from '../roomSlice/RoomSlice';
 import { getAllTaskAsync, getUserAllTask } from '../task/TaskSlice';
 import { useForm } from "react-hook-form"
 import { addTodoAsync, deleteTodoAsync, getTodoAsync, getTodoTasks, updateTodoAsync } from '../todo/todoSlice';
@@ -69,18 +69,18 @@ function HomePage({ pusher }) {
         navigate(`/room/${room._id}/${room.roomCode}`);
     }, [navigate]);
 
-    
+
     const toggleViewTask = (id, from) => {
-        if(from=="Self"){
+        if (from == "Self") {
             setViewTasks((prevViewTasks) => ({
                 ...prevViewTasks,
                 [id]: !prevViewTasks[id],
-              }));
+            }));
         }
-        else{
+        else {
             // navigate(`/room/${roomInfo._id}/${roomInfo.roomCode}`);
         }
-      };
+    };
 
     const handleDeleteTask = async (id) => {
         dispatch(deleteTodoAsync(id))
@@ -88,8 +88,8 @@ function HomePage({ pusher }) {
 
     const handleUpdateTodo = (data, id) => {
         const currDone = data.done;
-        const newData = {...data, done: !currDone};
-        dispatch(updateTodoAsync({newData, id}));
+        const newData = { ...data, done: !currDone };
+        dispatch(updateTodoAsync({ newData, id }));
     }
 
 
@@ -206,7 +206,7 @@ function HomePage({ pusher }) {
                                 <div className='flex flex-col w-full gap-3 ' >
                                     {todos && todos.map((todo) =>
                                         <>
-                                            <div className={`bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col ${todo.done ? 'opacity-50': null}`}>
+                                            <div className={`bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col ${todo.done ? 'opacity-50' : null}`}>
                                                 <p>{todo.from}</p>
                                                 <div className='flex w-full justify-between'>
                                                     <p>{todo.name}</p>
@@ -219,7 +219,7 @@ function HomePage({ pusher }) {
                                                     >
                                                         {viewTasks[todo._id] ? 'Close' : 'View'}
                                                     </button>
-                                                    <button className='bg-green-500 rounded-md py-1 px-3' onClick={()=> handleUpdateTodo(todo, todo._id)}>{todo.done? 'Undone': 'Done'}</button>
+                                                    <button className='bg-green-500 rounded-md py-1 px-3' onClick={() => handleUpdateTodo(todo, todo._id)}>{todo.done ? 'Undone' : 'Done'}</button>
                                                     <button className='bg-red-500 rounded-md py-1 px-3' onClick={() => handleDeleteTask(todo._id)}>Delete</button>
                                                 </div>
                                                 {todo.description && viewTasks[todo._id] && (
@@ -246,69 +246,73 @@ function HomePage({ pusher }) {
 
 
 const RoomInfoCard = React.memo(({ room, fn }) => {
-    console.log(room)
-    const admin = room.users.find((user) => (user.role === 'Admin' ? user.userId : 'd'))
+    const admin = room.users.find(user => user.role === 'Admin');
     const [showDelete, setShowDelete] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [curr, setCurr] = useState(null)
+    const [curr, setCurr] = useState(null);
     const dispatch = useDispatch();
 
-
-
-
     const handleDeleteRoom = (roomId) => {
-        setCurr(roomId)
+        setCurr(roomId);
         setShowDelete(true);
-    }
-    const confirmDelete = () => {
+    };
+
+    const confirmDelete = async () => {
         setLoading(true);
         try {
-            dispatch(deleteRoomAsync(curr));
-            dispatch(getLoggedUserAsync());
+            await dispatch(deleteRoomAsync(curr));
+            await dispatch(getLoggedUserAsync());
         } catch (error) {
             console.error(error);
         } finally {
             setLoading(false);
+            setShowDelete(false);
         }
-    }
+    };
+
     return (
         <>
-            {curr && !loading &&
-                <div className='w-full h-full absolute top-0 left-0'>
-                    <div
-                    className={`flex flex-col justify-between absolute h-[150px] w-[300px] z-30 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-md border-2 border-gray-600 bg-primaryBackground p-3 ${showDelete ? 'visible' : 'hidden'}`}>
-                    <div
-                        className='text-white font-bold text-lg '>
-                        Are you sure want to delete</div>
-                    <div className={`w-full flex justify-evenly ${loading ? 'hidden' : 'visible'}`}>
-                        <button onClick={() => setShowDelete(false)} className='text-white bg-green-500 rounded-md font-semibold p-2 flex items-center justify-between gap-1'>Cancel<IoCloseCircle /></button>
-                        <button onClick={confirmDelete} className='text-white bg-red-500 rounded-md font-semibold p-2 flex items-center justify-between gap-1'>Sure <MdDelete /></button>
+            {showDelete && curr && (
+                <div className="w-full h-full absolute top-0 left-0">
+                    <div className="flex flex-col justify-between absolute h-[150px] w-[300px] z-30 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-md border-2 border-gray-600 bg-primaryBackground p-3">
+                        <div className="text-white font-bold text-lg">
+                            Are you sure you want to delete?
+                        </div>
+                        {loading ? (
+                            <div className="text-white font-bold">Loading...</div>
+                        ) : (
+                            <div className="w-full flex justify-evenly">
+                                <button onClick={() => setShowDelete(false)} className="text-white bg-green-500 rounded-md font-semibold p-2 flex items-center justify-between gap-1">
+                                    Cancel<IoCloseCircle />
+                                </button>
+                                <button onClick={confirmDelete} className="text-white bg-red-500 rounded-md font-semibold p-2 flex items-center justify-between gap-1">
+                                    Sure<MdDelete />
+                                </button>
+                            </div>
+                        )}
                     </div>
-
                 </div>
-                </div> }
-            {loading &&
-                <div className={`text-white text-center ${loading ? 'visible' : 'hidden'}`}>
-                    loading....
-                </div>}
+            )}
 
-            <div className='group h-[150px] w-full rounded-md bg-primaryBackground p-2 transform  hover:scale-105 transition-all duration-800'>
-                <div className='flex flex-col justify-between h-full  p-2'>
-                    <div onClick={() => fn(room)} className='cursor-pointer h-1/2'>
-                        <h3 className='text-white text-xl font-semibold'>{room.roomName}</h3>
+            <div className="group h-[150px] w-full rounded-md bg-primaryBackground p-2 transform hover:scale-105 transition-all duration-800">
+                <div className="flex flex-col justify-between h-full p-2">
+                    <div onClick={() => fn(room)} className="cursor-pointer h-1/2">
+                        <h3 className="text-white text-xl font-semibold">{room.roomName}</h3>
                     </div>
-                    <div className='text-secondaryText text-sm'>
-                        <p>Created By:-</p>
-                        <span className='flex w-full items-center justify-between'>{admin.userId.userName}
-                            <button onClick={() => handleDeleteRoom(room._id)} >
-                                <MdDelete className='text-red-500 text-lg hover:scale-150 z-20 cursor-pointer' />
+                    <div className="text-secondaryText text-sm">
+                        <p>Created By:</p>
+                        <span className="flex w-full items-center justify-between">
+                            {admin ? admin.userId.userName : 'Unknown'}
+                            <button onClick={() => handleDeleteRoom(room._id)}>
+                                <MdDelete className="text-red-500 text-lg hover:scale-150 z-20 cursor-pointer" />
                             </button>
-                            <FaCircleArrowRight className='group-hover:text-primaryBlue' /></span>
+                            <FaCircleArrowRight className="group-hover:text-primaryBlue" />
+                        </span>
                     </div>
                 </div>
             </div>
         </>
-    )
+    );
 });
 
 
@@ -383,18 +387,15 @@ function CreateRoom({ user, visible, setVisible }) {
     const [roomInfo, setRoomInfo] = useState(null)
     const [roomName, setRoomName] = useState(null)
     const [error, setError] = useState(null)
+    const newRoom = useSelector(selectNewRoom)
     const dispatch = useDispatch();
 
     const navigate = useNavigate();
 
     const createRoom = async (code) => {
         try {
-            const createRoom = await createRoomApi({
-                roomCode: code,
-                roomName,
-            });
-            setRoomInfo(createRoom)
-            setError(null);
+            dispatch(createRoomAsync({ roomCode: code, roomName }));
+            setError(null)
         } catch (error) {
             console.error('An unexpected error occurred:', error);
             setError('An unexpected error occurred');
@@ -404,23 +405,24 @@ function CreateRoom({ user, visible, setVisible }) {
     useEffect(() => {
         const updateUser = async () => {
             try {
-                const rooms = [...user.rooms, { _id: roomInfo.roomInfo._id }];
+                let rooms = [...user.rooms, { _id: newRoom._id }];
+                console.log(user.rooms,rooms)
                 dispatch(updateUserAsync(rooms))
+                dispatch(getLoggedUserAsync())
             } catch (error) {
                 console.error('An unexpected error occurred:', error);
                 setError('An unexpected error occurred');
             }
         }
-        if (roomInfo) {
+        if (newRoom) {
             updateUser()
         }
-    }, [roomInfo])
+        
+    }, [newRoom])
 
     const handleCreate = async () => {
 
         if (createBtn === 'Copy') {
-
-
             navigator.clipboard.writeText(`http://localhost:5173/room/${joinCode}/`)
                 .catch((error) => {
                     console.error('Unable to copy text to clipboard:', error);
@@ -469,7 +471,7 @@ function CreateRoom({ user, visible, setVisible }) {
                 <button className={`rounded-lg py-3 px-2 bg-primaryBlue text-white w-3/12 ${createBtnProp}`} onClick={() => { handleCreate() }}>{createBtn}</button>
             </div>
             <p className='text-red-500 text-center'>{error}</p>
-            {joinCode && roomInfo &&
+            {joinCode && newRoom &&
                 <button className='rounded-lg py-2 px-2 bg-primaryGreen text-white w-full' onClick={handleJoin}>Join</button>
             }
         </div>
