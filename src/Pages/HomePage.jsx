@@ -274,7 +274,8 @@ const RoomInfoCard = React.memo(({ room, fn }) => {
     return (
         <>
             {curr && !loading &&
-                <div
+                <div className='w-full h-full absolute top-0 left-0'>
+                    <div
                     className={`flex flex-col justify-between absolute h-[150px] w-[300px] z-30 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-md border-2 border-gray-600 bg-primaryBackground p-3 ${showDelete ? 'visible' : 'hidden'}`}>
                     <div
                         className='text-white font-bold text-lg '>
@@ -284,7 +285,8 @@ const RoomInfoCard = React.memo(({ room, fn }) => {
                         <button onClick={confirmDelete} className='text-white bg-red-500 rounded-md font-semibold p-2 flex items-center justify-between gap-1'>Sure <MdDelete /></button>
                     </div>
 
-                </div>}
+                </div>
+                </div> }
             {loading &&
                 <div className={`text-white text-center ${loading ? 'visible' : 'hidden'}`}>
                     loading....
