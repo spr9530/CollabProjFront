@@ -39,8 +39,8 @@ const addRoomDataAsync = createAsyncThunk(
 
   const deleteRoomAsync = createAsyncThunk(
     'room/deleteRoom',
-    async(roomId)=>{
-        const response = await deleteRoom(roomId);
+    async(room)=>{
+        const response = await deleteRoom(room);
         return response.data;
     }
   )

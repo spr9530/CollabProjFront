@@ -6,7 +6,7 @@ import { IoMdPeople } from "react-icons/io";
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 // import { updateUserApi } from '../user/userApi';
-import { createRoomApi, roomPermission } from '../roomSlice/RoomApi';
+import { createRoomApi, createRoomCode, roomPermission } from '../roomSlice/RoomApi';
 import { triggerEvent } from '../socket/trigger';
 import { useDispatch, useSelector } from 'react-redux';
 import { getLoggedUserAsync, getUser, getUserRoom, updateUserAsync } from '../user/userSlice';
@@ -19,8 +19,6 @@ import { addTodoAsync, deleteTodoAsync, getTodoAsync, getTodoTasks, updateTodoAs
 
 
 function HomePage({ pusher }) {
-
-
 
     const [joinRoomDisplay, setJoinRoomDisplay] = useState('hidden')
     const [createRoomDisplay, setCreateRoomDisplay] = useState('hidden')
@@ -39,6 +37,7 @@ function HomePage({ pusher }) {
         register,
         handleSubmit,
         watch,
+        reset,
         formState: { errors },
     } = useForm()
 
@@ -100,7 +99,9 @@ function HomePage({ pusher }) {
         <>
             <Navbar />
             <JoinRoom visible={joinRoomDisplay} setVisible={setJoinRoomDisplay} user={userInfo} pusher={pusher} />
-            <CreateRoom user={userInfo} visible={createRoomDisplay} setVisible={setCreateRoomDisplay} />
+            <CreateRoom user={userInfo} visible={createRoomDisplay} setVisible={setCreateRoomDisplay} roomInfo={roomInfo} />
+
+            {/* //Crete task */}
             <form onSubmit={handleSubmit((data) => {
                 dispatch(addTodoAsync(data))
                 setCreateTask('hidden')
@@ -127,9 +128,9 @@ function HomePage({ pusher }) {
                             className='bg-transparent text-white outline-none border-2 border-gray-700 p-1 rounded-md'
                             {...register('taskDate', {
                                 required: "Task Date is required",
-                                validate: value => value >= today || "Date must be today or later"
+                                validate: value => value > today || "Date must be today or later"
                             })}
-                            min={today}
+                        // min={today}
                         />
                         {errors.taskDate && <span className='text-red-500 text-sm'>{errors.taskDate.message}</span>}
                     </div>
@@ -145,7 +146,7 @@ function HomePage({ pusher }) {
 
                     <div className='flex w-full justify-between'>
                         <button type='submit' className='bg-green-500 text-white py-1 px-3 rounded-md'>Add</button>
-                        <button type='button' className='bg-red-500 text-white py-1 px-3 rounded-md' onClick={() => setCreateTask('hidden')}>Cancel</button>
+                        <button type='button' className='bg-red-500 text-white py-1 px-3 rounded-md' onClick={() => { setCreateTask('hidden'), reset() }}>Cancel</button>
                     </div>
                 </div>
             </form>
@@ -204,34 +205,31 @@ function HomePage({ pusher }) {
                             </div>
                             <div className='flex w-full h-full max-h-[78%] overflow-scroll scrollbar-none'>
                                 <div className='flex flex-col w-full gap-3 ' >
-                                    {todos && todos.map((todo) =>
-                                        <>
-                                            <div className={`bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col ${todo.done ? 'opacity-50' : null}`}>
-                                                <p>{todo.from}</p>
-                                                <div className='flex w-full justify-between'>
-                                                    <p>{todo.name}</p>
-                                                    <p>{todo.date}</p>
-                                                </div>
-                                                <div className='flex w-full justify-between pt-4 '>
-                                                    <button
-                                                        className={`${viewTasks[todo._id] ? 'bg-red-500' : 'bg-pink-600'} rounded-md py-1 px-3`}
-                                                        onClick={() => toggleViewTask(todo._id, todo.from)}
-                                                    >
-                                                        {viewTasks[todo._id] ? 'Close' : 'View'}
-                                                    </button>
-                                                    <button className='bg-green-500 rounded-md py-1 px-3' onClick={() => handleUpdateTodo(todo, todo._id)}>{todo.done ? 'Undone' : 'Done'}</button>
-                                                    <button className='bg-red-500 rounded-md py-1 px-3' onClick={() => handleDeleteTask(todo._id)}>Delete</button>
-                                                </div>
-                                                {todo.description && viewTasks[todo._id] && (
-                                                    <div className='w-full'>
-                                                        <div className='w-full'>
-                                                            <input type="text" className='w-full bg-transparent' disabled value={todo.description} />
-                                                        </div>
-                                                    </div>
-                                                )}
+                                    {todos && todos.map((todo, index) =>
+                                        <div key={index} className={`bg-[#ffffff1a] rounded-lg p-4 text-white font-semibold flex flex-col ${todo.done ? 'opacity-50' : null}`}>
+                                            <p>{todo.from}</p>
+                                            <div className='flex w-full justify-between'>
+                                                <p>{todo.name}</p>
+                                                <p>{todo.date}</p>
                                             </div>
-
-                                        </>
+                                            <div className='flex w-full justify-between pt-4 '>
+                                                <button
+                                                    className={`${viewTasks[todo._id] ? 'bg-red-500' : 'bg-pink-600'} rounded-md py-1 px-3`}
+                                                    onClick={() => toggleViewTask(todo._id, todo.from)}
+                                                >
+                                                    {viewTasks[todo._id] ? 'Close' : 'View'}
+                                                </button>
+                                                <button className='bg-green-500 rounded-md py-1 px-3' onClick={() => handleUpdateTodo(todo, todo._id)}>{todo.done ? 'Undone' : 'Done'}</button>
+                                                <button className='bg-red-500 rounded-md py-1 px-3' onClick={() => handleDeleteTask(todo._id)}>Delete</button>
+                                            </div>
+                                            {todo.description && viewTasks[todo._id] && (
+                                                <div className='w-full'>
+                                                    <div className='w-full'>
+                                                        <input type="text" className='w-full bg-transparent' disabled value={todo.description} />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -252,8 +250,8 @@ const RoomInfoCard = React.memo(({ room, fn }) => {
     const [curr, setCurr] = useState(null);
     const dispatch = useDispatch();
 
-    const handleDeleteRoom = (roomId) => {
-        setCurr(roomId);
+    const handleDeleteRoom = ({ roomId, roomCode }) => {
+        setCurr({ roomId, roomCode });
         setShowDelete(true);
     };
 
@@ -303,7 +301,7 @@ const RoomInfoCard = React.memo(({ room, fn }) => {
                         <p>Created By:</p>
                         <span className="flex w-full items-center justify-between">
                             {admin ? admin.userId.userName : 'Unknown'}
-                            <button onClick={() => handleDeleteRoom(room._id)}>
+                            <button onClick={() => handleDeleteRoom({ roomId: room._id, roomCode: room.roomCode })}>
                                 <MdDelete className="text-red-500 text-lg hover:scale-150 z-20 cursor-pointer" />
                             </button>
                             <FaCircleArrowRight className="group-hover:text-primaryBlue" />
@@ -315,8 +313,7 @@ const RoomInfoCard = React.memo(({ room, fn }) => {
     );
 });
 
-
-function JoinRoom({ visible, setVisible, user, pusher }) {
+const JoinRoom = React.memo(({ visible, setVisible, user, pusher }) => {
 
     const [code, setCode] = useState('')
     const [joinBtn, setJoinBtn] = useState('Join')
@@ -377,98 +374,90 @@ function JoinRoom({ visible, setVisible, user, pusher }) {
             {/* <p className='text-red-600 p-2'>Please fill code properly</p> */}
         </div>
     )
-}
+});
 
-function CreateRoom({ user, visible, setVisible }) {
-
+const CreateRoom = React.memo(({ user, visible, setVisible, roomInfo }) => {
     const [createBtn, setCreateBtn] = useState('Create');
     const [createBtnProp, setCreateBtnProp] = useState('');
     const [joinCode, setJoinCode] = useState(null);
-    const [roomInfo, setRoomInfo] = useState(null)
-    const [roomName, setRoomName] = useState(null)
-    const [error, setError] = useState(null)
-    const newRoom = useSelector(selectNewRoom)
+    const [roomName, setRoomName] = useState('');
+    const [error, setError] = useState(null);
+
     const dispatch = useDispatch();
-
     const navigate = useNavigate();
-
-    const createRoom = async (code) => {
-        try {
-            dispatch(createRoomAsync({ roomCode: code, roomName }));
-            setError(null)
-        } catch (error) {
-            console.error('An unexpected error occurred:', error);
-            setError('An unexpected error occurred');
-        }
-    }
+    const newRoom = useSelector(selectNewRoom);
 
     useEffect(() => {
-        const updateUser = async () => {
+        if (newRoom) {
+            const updateUser = async () => {
+                try {
+                    let rooms = [...user.rooms, { _id: newRoom._id }];
+                    await dispatch(updateUserAsync(rooms));
+                    await dispatch(getLoggedUserAsync());
+                } catch (error) {
+                    console.error('An unexpected error occurred:', error);
+                    setError('An unexpected error occurred');
+                }
+            };
+            updateUser();
+        }
+    }, [newRoom, dispatch]);
+
+    const handleCreate = useCallback(async () => {
+        if (createBtn === 'Copy') {
             try {
-                let rooms = [...user.rooms, { _id: newRoom._id }];
-                console.log(user.rooms,rooms)
-                dispatch(updateUserAsync(rooms))
-                dispatch(getLoggedUserAsync())
+                await navigator.clipboard.writeText(`http://localhost:5173/room/${joinCode}/`);
+                setCreateBtn('Copied');
+                setTimeout(() => setCreateBtn('Copy'), 800);
+                setCreateBtnProp('bg-orange-200 text-gray-600');
             } catch (error) {
-                console.error('An unexpected error occurred:', error);
-                setError('An unexpected error occurred');
+                console.error('Unable to copy text to clipboard:', error);
+            }
+        } else {
+            const code = await createRoomCode();
+            if (code) {
+                setJoinCode(code);
+                setCreateBtn('Copy');
+                setTimeout(() => setCreateBtn('Copy'), 800);
+                dispatch(createRoomAsync({ roomCode: code, roomName }));
+            } else {
+                setError('Failed to create a unique room code.');
             }
         }
+    }, [createBtn, joinCode, roomName, dispatch]);
+
+    const handleJoin = useCallback(() => {
         if (newRoom) {
-            updateUser()
+            navigate(`/room/${newRoom._id}/${newRoom.roomCode}`);
         }
-        
-    }, [newRoom])
+    }, [newRoom, navigate]);
 
-    const handleCreate = async () => {
-
-        if (createBtn === 'Copy') {
-            navigator.clipboard.writeText(`http://localhost:5173/room/${joinCode}/`)
-                .catch((error) => {
-                    console.error('Unable to copy text to clipboard:', error);
-                });
-            setTimeout(setCreateBtn('Copied'), 800);
-            setCreateBtnProp('bg-orange-200 text-gray-600')
-        }
-
-        else {
-
-            let s1 = Math.floor(Math.random() * (999 - 100 + 1)) + 100;
-            let s2 = Math.floor(Math.random() * (999 - 100 + 1)) + 100;
-            let s3 = Math.floor(Math.random() * (999 - 100 + 1)) + 100;
-            let s4 = Math.floor(Math.random() * (999 - 100 + 1)) + 100;
-            setJoinCode(`${s1}-${s2}-${s3}-${s4}`)
-            setTimeout(setCreateBtn('Copy'), 800);
-            createRoom(`${s1}-${s2}-${s3}-${s4}`)
-        }
-    }
-
-
-    const handleJoin = () => {
-        if (roomInfo) {
-            navigate(`/room/${roomInfo.roomInfo._id}/${roomInfo.roomInfo.roomCode}`)
-        }
-    }
-
-    const handleClose = () => {
-        setCreateBtn('Create')
-        setRoomName('')
-        setJoinCode('')
-        setVisible('hidden')
-    }
+    const handleClose = useCallback(() => {
+        setCreateBtn('Create');
+        setError('');
+        setRoomName('');
+        setJoinCode('');
+        setVisible('hidden');
+    }, [setVisible]);
 
     return (
         <div className={`h-fit w-full md:w-7/12 rounded-md fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-primaryBackground z-20 p-3 flex flex-col ${visible}`}>
             <div className='w-full p-2 flex justify-between'>
                 <h2 className='text-white text-4xl font-bold'>Create Room</h2>
-                <button onClick={() => { handleClose() }}> <IoCloseCircle className='text-white text-xl' /></button>
+                <button onClick={handleClose}> <IoCloseCircle className='text-white text-xl' /></button>
             </div>
             <div className='flex gap-3 h-full items-center p-2'>
-                <input className='rounded-lg py-3 px-2 bg-secondaryBackground text-white w-full outline-none' type="text" value={roomName} onChange={(e) => setRoomName(e.target.value)} placeholder='Room Name' />
+                <input
+                    className='rounded-lg py-3 px-2 bg-secondaryBackground text-white w-full outline-none'
+                    type="text"
+                    value={roomName}
+                    onChange={(e) => setRoomName(e.target.value)}
+                    placeholder='Room Name'
+                />
             </div>
             <div className='flex gap-3 h-full items-center p-2'>
                 <input className='rounded-lg py-3 px-2 bg-secondaryBackground text-white w-9/12 outline-none' type="text" value={joinCode} disabled placeholder='####-####-####-####' />
-                <button className={`rounded-lg py-3 px-2 bg-primaryBlue text-white w-3/12 ${createBtnProp}`} onClick={() => { handleCreate() }}>{createBtn}</button>
+                <button className={`rounded-lg py-3 px-2 bg-primaryBlue text-white w-3/12 ${createBtnProp} ${roomName ? 'opacity-100' : 'opacity-35'}`} disabled={!roomName} onClick={handleCreate}>{createBtn}</button>
             </div>
             <p className='text-red-500 text-center'>{error}</p>
             {joinCode && newRoom &&
@@ -476,7 +465,7 @@ function CreateRoom({ user, visible, setVisible }) {
             }
         </div>
     )
-}
+});
 
 
 export default HomePage

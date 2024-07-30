@@ -26,6 +26,27 @@ export const addRoomData = (data) => {
     });
 };
 
+export const createRoomCode = async () => {
+    try {
+        const response = await fetch('https://collab-project-indol.vercel.app/app/v1/room/createRoomCode', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+        return data.roomCode; 
+    } catch (error) {
+        console.error('Error creating room code:', error);
+        return null; 
+    }
+};
+
 export const createRoomApi = (info) => {
     return new Promise(async (resolve, reject) => {
         try {
@@ -323,11 +344,11 @@ export const downloadFiles = async ({ roomId }) => {
     }
 };
 
-export const deleteRoom = (roomId) =>{
+export const deleteRoom = ({roomId, roomCode}) =>{
     return new Promise(async(resolve, reject) => {
         try {
             const token = localStorage.getItem('token')
-            const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/room/${roomId}`,{
+            const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/room/${roomId}/${roomCode}`,{
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',

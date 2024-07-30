@@ -125,7 +125,7 @@ export const userLogginApi = (userCredentials) => {
             reject({ error: 'Internal server error' });
         }
     });
-}
+};
 
 export const getUserInfo = async () => {
     const token = localStorage.getItem('token')
@@ -147,7 +147,7 @@ export const getUserInfo = async () => {
         console.log({ error })
         return ({ error })
     }
-}
+};
 
 export const getLoggedUser = () => {
     return new Promise(async (resolve, reject) => {
@@ -197,7 +197,7 @@ export const updateUserApi = async (rooms) => {
     } catch (error) {
         console.log(error)
     }
-}
+};
 
 export const updateUserRoom = (rooms) => {
     return new Promise(async (resolve, reject) => {
