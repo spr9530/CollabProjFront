@@ -176,7 +176,7 @@ function HomePage({ pusher }) {
                             <div className='flex flex-wrap gap-3 my-1 w-full p-1 md:p-3 max-h-[85%] overflow-scroll scrollbar-none '>
                                 {roomInfo ? roomInfo.map((room, index) => (
                                     <div key={index} className='w-full sm:w-[48%] 2xl:w-[31%] h-fit'>
-                                        <RoomInfoCard room={room} fn={handleRoomCard} />
+                                        <RoomInfoCard room={room} fn={handleRoomCard} userInfo={userInfo} />
                                     </div>
                                 )) : <div className='w-full h-full flex justify-center items-center text-gray-500 m-4'>No Rooms Avaialable</div>}
 
@@ -243,8 +243,9 @@ function HomePage({ pusher }) {
 }
 
 
-const RoomInfoCard = React.memo(({ room, fn }) => {
+const RoomInfoCard = React.memo(({ room, fn, userInfo }) => {
     const admin = room.users.find(user => user.role === 'Admin');
+    
     const [showDelete, setShowDelete] = useState(false);
     const [loading, setLoading] = useState(false);
     const [curr, setCurr] = useState(null);
@@ -301,9 +302,12 @@ const RoomInfoCard = React.memo(({ room, fn }) => {
                         <p>Created By:</p>
                         <span className="flex w-full items-center justify-between">
                             {admin ? admin.userId.userName : 'Unknown'}
-                            <button onClick={() => handleDeleteRoom({ roomId: room._id, roomCode: room.roomCode })}>
-                                <MdDelete className="text-red-500 text-lg hover:scale-150 z-20 cursor-pointer" />
-                            </button>
+                            {admin && userInfo._id == admin.userId._id &&
+                                <button onClick={() => handleDeleteRoom({ roomId: room._id, roomCode: room.roomCode })}>
+                                    <MdDelete className="text-red-500 text-lg hover:scale-150 z-20 cursor-pointer" />
+                                </button>
+                            }
+
                             <FaCircleArrowRight className="group-hover:text-primaryBlue" />
                         </span>
                     </div>

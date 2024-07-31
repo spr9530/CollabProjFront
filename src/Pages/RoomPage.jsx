@@ -10,6 +10,8 @@ import { FaEdit } from "react-icons/fa";
 import { FaFolder } from "react-icons/fa";
 import { FaPencilRuler } from "react-icons/fa";
 import { IoCloseCircle } from "react-icons/io5";
+import { SiFiles } from "react-icons/si";
+import { IoChatbubbles } from "react-icons/io5";
 import { MdDelete } from "react-icons/md";
 import { LuScreenShare } from "react-icons/lu";
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -39,8 +41,7 @@ function RoomPage({ pusher }) {
     const [currFile, setCurrFile] = useState(null)
     const [filePath, setFilePath] = useState('/')
     const [pathHistory, setPathHistory] = useState([])
-    const [askPermission, setAskPermission] = useState(false)
-    const [askingUser, setAskingUser] = useState('null')
+    const [toggleView, setToggleView] = useState('files');
     const [createDivVisibility, setCreateDivVisibility] = useState('hidden')
     const [taskDivVisibility, setTaskDivVisibility] = useState('hidden')
     const [downloadBtn, setDownloadBtn] = useState('enable');
@@ -48,7 +49,7 @@ function RoomPage({ pusher }) {
 
 
     //fetch UserInfo
-    
+
     const fetchUserInfo = useCallback(async () => {
         try {
             const userInfo = await getUserInfo();
@@ -127,7 +128,7 @@ function RoomPage({ pusher }) {
         const channel = pusher.subscribe(`${id1}`);
         const rqstChannel = pusher.subscribe(`${id2}`);
         channel.bind('userJoind', function (data) {
-            if (admin && admin[0]&&admin[0].userId._id === userInfo._id) {
+            if (admin && admin[0] && admin[0].userId._id === userInfo._id) {
                 alert('Received data: ' + JSON.stringify(data));
             }
         });
@@ -205,26 +206,19 @@ function RoomPage({ pusher }) {
         <>
             <Navbar />
             <div>
-                {/* {askPermission &&
-                    <div className='bg-slate-900 p-5 rounded-md absolute top-1/2 left-1/2 flex flex-col z-50'>
-                        <div className='text-white text-xl'>{askingUser.userName} is asking permission to join</div>
-                        <button className='bg-white p-2 text-slate-900' onClick={(e) => (handlePermissionGrant(e))}>Grant</button>
-                    </div>
-                } */}
-                <RoomUsers roomInfo={roomInfo} admin={admin} user={userInfo} fetchRoomInfo={fetchRoomInfo} />
+
+                <RoomUsers roomInfo={roomInfo} admin={admin} user={userInfo} fetchRoomInfo={fetchRoomInfo} setToggleView={setToggleView} toggleView={toggleView} />
                 <CreateTask visibility={taskDivVisibility} setVisibility={setTaskDivVisibility} roomInfo={roomInfo} fetchTask={fetchTask} />
                 <CreateDiv visibility={createDivVisibility} setVisibility={setCreateDivVisibility} user={userInfo} setUser={setUserInfo} currFile={currFile} />
                 <div className='bg-primaryBackground w-full flex gap-2 justify-center '>
-                    <div className='w-9/12 shadow-primaryBoxShadow m-2 p-4 rounded-md h-screen overflow-scroll scrollbar-none'>
+                    <div className={`w-full  md:w-9/12 shadow-primaryBoxShadow m-2 p-1 md:p-4 rounded-md h-screen overflow-scroll scrollbar-none ${toggleView == 'chat' ? 'hidden' : ''} `}>
                         <div className='bg-secondaryBackground p-4 rounded-md m-2'>
                             <div className='flex w-full justify-between'>
-                                <h2 className='text-white text-3xl font-bold'>Files</h2>
+                                <h2 className='text-white text-2xl md:text-3xl font-bold'>Files</h2>
                                 <div className='flex gap-2'>
-                                    <button className='bg-purple-600 text-white p-1 px-3 rounded-lg flex items-center gap-1' onClick={handleCreate} >  Create <FaFileCirclePlus /> </button>
-                                    <button className={` p-1 px-3 rounded-lg flex items-center gap-1 ${downloadBtn === 'disable' ? 'bg-purple-400 text-gray-400' : 'bg-purple-600 text-white'}`} disabled={downloadBtn === 'disable'} onClick={handleDownload}>Download</button>
-
+                                    <button className='bg-purple-600 text-white p-1 px-3 font-semibold rounded-lg flex items-center gap-1' onClick={handleCreate} >  Create <FaFileCirclePlus /> </button>
+                                    <button className={` p-1 px-3 rounded-lg flex items-center font-semibold gap-1 ${downloadBtn === 'disable' ? 'bg-purple-400 text-gray-400' : 'bg-purple-600 text-white'}`} disabled={downloadBtn === 'disable'} onClick={handleDownload}>Download</button>
                                 </div>
-
                             </div>
                             <div className='text-white flex items-center'>
                                 <span
@@ -258,9 +252,9 @@ function RoomPage({ pusher }) {
                         </div>
                         <div className='bg-secondaryBackground p-4 rounded-md m-2'>
                             <div className='flex w-full justify-between'>
-                                <h2 className='text-white text-3xl font-bold'>Tasks</h2>
+                                <h2 className='text-white text-2xl md:text-3xl font-bold'>Tasks</h2>
                                 <button
-                                    className='bg-primaryBlue text-white p-1 px-3 rounded-lg flex items-center gap-1'
+                                    className='bg-primaryBlue text-white font-semibold p-1 px-3 rounded-lg flex items-center gap-1'
                                     type='button'
                                     onClick={() => { setTaskDivVisibility('visible') }}
                                 >Create Task <FaPencilRuler /></button>
@@ -274,7 +268,7 @@ function RoomPage({ pusher }) {
                             </div>
                         </div>
                     </div>
-                    <div className="w-3/12 shadow-primaryBoxShadow h-screen relative top-0 right-0 m-2 p-4 rounded-md flex flex-col">
+                    <div className={`w-full md:w-3/12 shadow-primaryBoxShadow h-screen relative top-0 right-0 m-2 p-4 rounded-md ${toggleView == 'chat' ? 'flex' : 'hidden'} md:flex flex-col`}>
                         <h2 className='text-white text-2xl font-bold flex items-center h-fit w-full justify-between'> <span className='text-yellow-600'><FaRegBell /></span> </h2>
                         <div className='py-2 h-full w-full overflow-scroll scrollbar-none flex flex-col gap-2'>
                         </div>
@@ -285,11 +279,10 @@ function RoomPage({ pusher }) {
     )
 }
 
-function RoomUsers({ roomInfo, admin, user, fetchRoomInfo }) {
+function RoomUsers({ roomInfo, admin, user, fetchRoomInfo, setToggleView, toggleView }) {
     const [showRqst, setShowRqst] = useState('hidden')
     const [reqstTab, setReqstTab] = useState('hidden')
-
-
+    const [showUsers, setShowUsers] = useState('hidden')
     const { id1, id2 } = useParams()
 
     useEffect(() => {
@@ -323,49 +316,60 @@ function RoomUsers({ roomInfo, admin, user, fetchRoomInfo }) {
 
     return (
         <>
-            <div className='bg-primaryBackground justify-between flex h-fit p-2'>
-                <div className='w-2/12 text-white flex gap-1 items-center relative'>
+            <div className='w-full bg-primaryBackground relative justify-between flex h-fit p-2'>
+                <div className='w-5/12 text-white flex gap-1 items-center relative' onClick={() => setShowUsers('visible')}>
                     Users
-                    <div className={`relative w-4 cursor-pointer ${reqstTab}`} onClick={() => setShowRqst('visible')}>
-                        <FaUser className='text-white' />
-                        {roomInfo.reqsts.length >= 1 &&
-                            <div className='bg-red-500 text-white rounded-full text-[10px] font-bold h-[14px] w-[14px] flex items-center justify-center p-1 absolute -top-1 -right-2'>{roomInfo.reqsts.length}</div>
-                        }
-                    </div>
-                    <div className={`absolute top-7 flex flex-col gap-1 max-h-4/5 overflow-scroll scrollbar-none bg-secondaryBackground w-10/12 h-fit rounded-md p-2 pt-3 ${showRqst}`}>
-                        <button className='flex justify-end w-full' onClick={() => setShowRqst('hidden')}><IoCloseCircle className='text-white text-xl' /></button>
-                        <div className='bg-primaryBackground'>
-                            {roomInfo.reqsts && roomInfo.reqsts.map((rqst) => (
-                                <div className='flex w-full bg-primaryBackground h-[50px] p-1 rounded-md text-white'>
-                                    <div className='text-sm mx-2 w-[70%] h-[50px] overflow-hidden'>{rqst.user.name}</div>
-                                    <button className='text-sm mx-2 text-primaryGreen bg-green-100 border-primaryGreen rounded-md text-[10px] px-1' onClick={() => handleAccept(rqst.user._id)}>Accept</button>
-                                    <button className='text-sm mx-2 text-primaryGreen bg-green-100 border-primaryGreen rounded-md text-[10px] px-1' onClick={() => handleReject(rqst.user._id)}>Reject</button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                 </div>
-                <div className='flex gap-2 w-6/12'>
-                    {
+                <div className={`flex absolute left-2 top-12 gap-2 w-64 bg-black h-[300px] p-2 z-20 ${showUsers}`}>
+                    <button className='flex justify-end w-full' onClick={() => setShowUsers('hidden')}><IoCloseCircle className='text-white text-xl' /></button>
+                    {/* {
                         roomInfo.users.map((user) => (
                             <div className='flex text-white max-w-5/12 overflow-clip'>
                                 <span className='bg-white rounded-full h-[25px] w-[25px] mr-2'></span>
                                 {user.userId.userName}
                             </div>
                         ))
-                    }
+                    } */}
                 </div>
-                <div className='w-2/12 flex justify-center gap-3 items-center'>
-                    <div className='text-pink-500 text-xl flex flex-col items-center cursor-pointer'>
+                <div className='w-full flex justify-center gap-3 items-center'>
+                    <div className='relative text-xl flex flex-col items-center cursor-pointer'>
+                        <div className={`relative text-pink-500 w-fit cursor-pointer pt-2 ${reqstTab}`} onClick={() => setShowRqst('visible')}>
+                            <FaUser className='mx-auto' />
+                            {roomInfo.reqsts.length >= 1 &&
+                                <div className='bg-red-500 text-white rounded-full text-[10px] font-bold h-[14px] w-[14px] flex items-center justify-center p-1 absolute -top-1 -right-2'>{roomInfo.reqsts.length}</div>
+                            }
+                            <span className='text-sm text-white'>Request</span>
+                        </div>
+                        <div className={`absolute top-7 flex flex-col gap-1 max-h-4/5 overflow-scroll scrollbar-none bg-secondaryBackground w-[300px] h-fit rounded-md p-2 pt-3 ${showRqst}`}>
+                            <button className='flex justify-end w-full' onClick={() => setShowRqst('hidden')}><IoCloseCircle className='text-white text-xl' /></button>
+                            <div className='bg-primaryBackground rounded-md'>
+                                {roomInfo.reqsts && roomInfo.reqsts.length > 0 ? roomInfo.reqsts.map((rqst) => (
+                                    <div className='flex w-full bg-primaryBackground h-[50px] p-1 rounded-md text-white'>
+                                        <div className='text-sm mx-2 w-[70%] h-[50px] overflow-hidden'>{rqst.user.name}</div>
+                                        <button className='text-sm mx-2 text-primaryGreen bg-green-100 border-primaryGreen rounded-md text-[10px] px-1' onClick={() => handleAccept(rqst.user._id)}>Accept</button>
+                                        <button className='text-sm mx-2 text-primaryGreen bg-green-100 border-primaryGreen rounded-md text-[10px] px-1' onClick={() => handleReject(rqst.user._id)}>Reject</button>
+                                    </div>
+                                ))
+                                    :
+                                    <div className='text-gray-500 text-center bg-transparent '>
+                                        No Requests
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div className='text-pink-500 text-xl flex flex-col  items-center cursor-pointer pt-2'>
                         <Link to={`/room/${id1}/${id2}/meeting`}>
-                            <FaVideo />
+                            <FaVideo className='mx-auto' />
                             <span className='text-sm text-white'>Room Meet</span>
                         </Link>
                     </div>
-                    {/* <div className='text-pink-500 text-xl flex flex-col items-center cursor-pointer'>
-                        <LuScreenShare />
-                        <span className='text-sm text-white'>Screen Share</span>
-                    </div> */}
+                    <div className='text-pink-500 text-xl flex flex-col md:hidden items-center cursor-pointer pt-2' onClick={() => toggleView == 'chat' ? setToggleView('file') : setToggleView('chat')}>
+                        {toggleView == 'chat' ? <SiFiles className='mx-auto' /> : <IoChatbubbles className='mx-auto' />}
+                        {toggleView == 'chat' ? <span className='text-sm text-white'>Room Files</span> : <span className='text-sm text-white'>Room Chat</span>}
+
+                    </div>
+
                 </div>
             </div>
         </>
