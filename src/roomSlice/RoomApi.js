@@ -152,7 +152,7 @@ export const createRoomFile = ({ name, type, parentId, roomId, path }) => {
             }
 
             const data = await createFile.json()
-            resolve('success')
+            resolve(data)
 
         } catch (error) {
             reject({ error: error.message })

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux';
 import { FaFileCirclePlus } from "react-icons/fa6";
 import { FaRegBell } from "react-icons/fa";
 import { FaCode } from "react-icons/fa6";
@@ -13,10 +14,8 @@ import { IoCloseCircle } from "react-icons/io5";
 import { SiFiles } from "react-icons/si";
 import { IoChatbubbles } from "react-icons/io5";
 import { MdDelete } from "react-icons/md";
-import { LuScreenShare } from "react-icons/lu";
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
-import { getUserInfo } from '../user/userApi';
 import { acceptPermission, createRoomFile, downloadFiles, getRoomFiles, getRoomInfo, rejectPermission, updateRoomUsers } from '../roomSlice/RoomApi';
 import { useForm } from "react-hook-form";
 import Navbar from '../components/Navbar';
@@ -24,17 +23,20 @@ import CreateTask from '../components/CreateTask';
 import { getUsersTask } from '../task/TaskApi';
 import TaskInfo from '../components/TaskInfo';
 import { triggerEvent } from '../socket/trigger';
+import { getLoggedUserAsync, getUser } from '../user/userSlice';
+import { createRoomFileAsync, getCurrRoomAsync, selectCurrRoom } from '../roomSlice/RoomSlice';
 
 
 
 function RoomPage({ pusher }) {
     let { id1, id2 } = useParams();
     const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const userInfo = useSelector(getUser);
+    const roomInfo = useSelector(selectCurrRoom)
     const [loading, setLoading] = useState(true)
     const [admin, setAdmin] = useState([]);
     const [allowed, setAllowed] = useState(false);
-    const [userInfo, setUserInfo] = useState(null)
-    const [roomInfo, setRoomInfo] = useState()
     const [taskInfo, setTaskInfo] = useState([])
     const [taskUpdated, setTaskUpdated] = useState(false);
     const [roomFiles, setRoomFiles] = useState([])
@@ -46,46 +48,27 @@ function RoomPage({ pusher }) {
     const [taskDivVisibility, setTaskDivVisibility] = useState('hidden')
     const [downloadBtn, setDownloadBtn] = useState('enable');
 
-
-
-    //fetch UserInfo
-
-    const fetchUserInfo = useCallback(async () => {
-        try {
-            const userInfo = await getUserInfo();
-            if (userInfo.error) {
-                navigate('/', { replace: true, state: { from: `/room/${id}` } });
-            }
-            setUserInfo(userInfo);
-        } catch (error) {
-            console.error("Error fetching user info:", error);
-        }
-    }, [navigate]);
-
     useEffect(() => {
-        fetchUserInfo();
-    }, [fetchUserInfo]);
-
-    const fetchRoomInfo = useCallback(async () => {
-        try {
-            const response = await getRoomInfo(id1);
-            setRoomInfo(response.roomInfo);
-            if (userInfo) {
-                const userExists = response.roomInfo.users.some((user) => user.userId._id === userInfo._id);
-                setAllowed(userExists);
-            }
-        } catch (error) {
-            console.error("Error fetching room info:", error);
-        } finally {
-            setLoading(false);
+        if (!userInfo) {
+            dispatch(getLoggedUserAsync());
         }
-    }, [id1, userInfo]);
+    }, [userInfo]);
 
     useEffect(() => {
         if (userInfo) {
-            fetchRoomInfo();
+            dispatch(getCurrRoomAsync(id1));
         }
-    }, [userInfo, fetchRoomInfo]);
+    }, [userInfo]);
+
+    useEffect(()=>{
+        if (userInfo && roomInfo) {
+            const userExists = roomInfo.users.some((user) => user.userId._id === userInfo._id);
+            setAllowed(userExists);
+            setLoading(false);
+        }
+    },[roomInfo])
+
+    
 
     const fetchRoomFiles = useCallback(async () => {
         try {
@@ -134,7 +117,7 @@ function RoomPage({ pusher }) {
         });
         rqstChannel.bind('updateRequests', function (data) {
             if (admin[0].userId._id === userInfo._id) {
-                fetchRoomInfo();
+                dispatch(getCurrRoomAsync(id1));
             }
         });
         return () => {
@@ -207,9 +190,9 @@ function RoomPage({ pusher }) {
             <Navbar />
             <div>
 
-                <RoomUsers roomInfo={roomInfo} admin={admin} user={userInfo} fetchRoomInfo={fetchRoomInfo} setToggleView={setToggleView} toggleView={toggleView} />
+                <RoomUsers roomInfo={roomInfo} admin={admin} user={userInfo} setToggleView={setToggleView} toggleView={toggleView} />
                 <CreateTask visibility={taskDivVisibility} setVisibility={setTaskDivVisibility} roomInfo={roomInfo} fetchTask={fetchTask} />
-                <CreateDiv visibility={createDivVisibility} setVisibility={setCreateDivVisibility} user={userInfo} setUser={setUserInfo} currFile={currFile} />
+                <CreateDiv visibility={createDivVisibility} setVisibility={setCreateDivVisibility} currFile={currFile} />
                 <div className='bg-primaryBackground w-full flex gap-2 justify-center '>
                     <div className={`w-full  md:w-9/12 shadow-primaryBoxShadow m-2 p-1 md:p-4 rounded-md h-screen overflow-scroll scrollbar-none ${toggleView == 'chat' ? 'hidden' : ''} `}>
                         <div className='bg-secondaryBackground p-4 rounded-md m-2'>
@@ -279,11 +262,12 @@ function RoomPage({ pusher }) {
     )
 }
 
-function RoomUsers({ roomInfo, admin, user, fetchRoomInfo, setToggleView, toggleView }) {
+function RoomUsers({ roomInfo, admin, user, setToggleView, toggleView }) {
     const [showRqst, setShowRqst] = useState('hidden')
     const [reqstTab, setReqstTab] = useState('hidden')
     const [showUsers, setShowUsers] = useState('hidden')
     const { id1, id2 } = useParams()
+    const dispatch = useDispatch()
 
     useEffect(() => {
         if (admin.length > 0 && user._id === admin[0].userId._id) {
@@ -293,8 +277,7 @@ function RoomUsers({ roomInfo, admin, user, fetchRoomInfo, setToggleView, toggle
 
     const handleReject = async (userId) => {
         try {
-            const response = await rejectPermission({ userId, roomId: id1 })
-            await fetchRoomInfo();
+            await rejectPermission({ userId, roomId: id1 })
         } catch (error) {
             console.log(error)
         }
@@ -307,8 +290,7 @@ function RoomUsers({ roomInfo, admin, user, fetchRoomInfo, setToggleView, toggle
                 event: 'reqstAccecpted',
                 message: 'reqstAccecpted',
             })
-
-            await fetchRoomInfo();
+            dispatch(getCurrRoomAsync(id1))
         } catch (error) {
             console.log(error)
         }
@@ -376,35 +358,41 @@ function RoomUsers({ roomInfo, admin, user, fetchRoomInfo, setToggleView, toggle
     )
 }
 
-function CreateDiv({ visibility, setVisibility, user, setUser, currFile }) {
-    const { register, handleSubmit, formState: { errors } } = useForm();
-    const { id1, id2 } = useParams()
+const CreateDiv = React.memo(({ visibility, setVisibility, currFile }) => {
+    const { id1 } = useParams()
+    const { register, handleSubmit, formState: { errors }, reset } = useForm();
+    const dispatch = useDispatch();
+    const [loading, setLoading] = useState(false);
 
+    const onSubmit = async (data) => {
+        setLoading(true);
+        try {
+            const newData = {
+                name: data.inputField,
+                type: data.selectField,
+                parentId: currFile ? currFile._id : null,
+                roomId: id1,
+                path: currFile ? currFile.path === '/' ? `${currFile.path}${currFile.name}` : `${currFile.path}/${currFile.name}` : '/'
+            };
+            await dispatch(createRoomFileAsync(newData));
+            setVisibility('hidden');
+            reset();
+        } catch (error) {
+            console.error("Error creating file:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className={`fixed w-[400px] h-fit top-1/2 -translate-x-1/2 left-1/2 -translate-y-1/2 p-4 bg-black text-white z-50 rounded-md ${visibility}`}>
-            <button className='w-full flex justify-end' onClick={() => setVisibility('hidden')}> <IoCloseCircle className='text-white text-xl' /></button>
+            <button className='w-full flex justify-end' onClick={() => { setVisibility('hidden'), reset(); }}> <IoCloseCircle className='text-white text-xl' /></button>
             <div className='text-xl font-bold text-gray-300'>Create New</div>
-            <form onSubmit={handleSubmit(async (data) => {
-                //create file
-
-                const create = await createRoomFile({
-                    name: data.inputField,
-                    type: data.selectField,
-                    parentId: currFile ? currFile._id : null,
-                    roomId: id1,
-                    path: currFile ? currFile.path == '/' ? `${currFile.path}${currFile.name}` : `${currFile.path}/${currFile.name}` : '/'
-                })
-                //update user
-                const user = await getUserInfo()
-                setVisibility('hidden')
-                setUser(user)
-            })}>
+            <form onSubmit={handleSubmit(onSubmit)}>
                 <div className='flex flex-col justify-evenly h-[200px]'>
                     <input className='bg-black text-white border-b-primaryGreen border-b-2 outline-none'
                         name='name'
-                        {...register('inputField',
-                            { required: 'This field is required' })}
+                        {...register('inputField', { required: 'This field is required' })}
                         type="text"
                         placeholder='Name' />
                     {errors.inputField && <p className='text-red-500 text-sm'>{errors.inputField.message}</p>}
@@ -412,7 +400,7 @@ function CreateDiv({ visibility, setVisibility, user, setUser, currFile }) {
                     <select className='bg-black text-white border-b-primaryGreen border-b-2 outline-none'
                         name="type"
                         {...register('selectField', {
-                            validate: value => value != '#' || 'Please select a valid type'
+                            validate: value => value !== '#' || 'Please select a valid type'
                         })}
                         id="creatOption"
                         required>
@@ -424,13 +412,14 @@ function CreateDiv({ visibility, setVisibility, user, setUser, currFile }) {
                     {errors.selectField && <p className='text-red-500 text-sm'>{errors.selectField.message}</p>}
                 </div>
                 <div className='w-full flex justify-end'>
-                    <button className={` p-2 rounded-md bg-purple-600`} type='submit'>Create</button>
-
+                    <button className={`p-2 rounded-md bg-purple-600`} type='submit' disabled={loading}>
+                        {loading ? 'Creating...' : 'Create'}
+                    </button>
                 </div>
             </form>
         </div>
     )
-}
+})
 
 function RoomFiles({ fileInfo }) {
     return (
