@@ -105,7 +105,6 @@ export const updateRoomUsers = ({ id2: id, users }) => {
     });
 };
 
-//fetching room 
 export const getRoomInfo = async (roomCode) => {
     try {
         const token = localStorage.getItem('token')
@@ -342,6 +341,45 @@ export const downloadFiles = async ({ roomId }) => {
     } catch (error) {
         return { error };
     }
+};
+
+export const deleteRoomFiles = ({ id, roomId }) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/room/files/${roomId}/${id}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                reject({ error: 'Error while deleting' });
+            }
+
+            const data = await response.json();
+            resolve(data);
+        } catch (error) {
+            reject({ error: 'Network or server error' });
+        }
+    });
+};
+export const updateRoomFiles = ({data, fileId, roomId}) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/room/files/${roomId}/${fileId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ data }),
+            });
+            if (!response.ok) {
+                reject({ error: 'Error while updating' });
+            } else {
+                const responseData = await response.json();
+                resolve(responseData);
+            }
+        } catch (error) {
+            reject({ error: 'Network or server error' });
+        }
+    });
 };
 
 export const deleteRoom = ({roomId, roomCode}) =>{

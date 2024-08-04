@@ -24,7 +24,7 @@ import { getUsersTask } from '../task/TaskApi';
 import TaskInfo from '../components/TaskInfo';
 import { triggerEvent } from '../socket/trigger';
 import { getLoggedUserAsync, getUser } from '../user/userSlice';
-import { createRoomFileAsync, getCurrRoomAsync, selectCurrRoom } from '../roomSlice/RoomSlice';
+import { createRoomFileAsync, deleteRoomAsync, deleteRoomFileAsync, getCurrRoomAsync, selectCurrRoom, selectCurrRoomFiles, updateRoomFileAsync } from '../roomSlice/RoomSlice';
 
 
 
@@ -34,6 +34,7 @@ function RoomPage({ pusher }) {
     const dispatch = useDispatch();
     const userInfo = useSelector(getUser);
     const roomInfo = useSelector(selectCurrRoom)
+    const allFiles = useSelector(selectCurrRoomFiles)
     const [loading, setLoading] = useState(true)
     const [admin, setAdmin] = useState([]);
     const [allowed, setAllowed] = useState(false);
@@ -60,36 +61,22 @@ function RoomPage({ pusher }) {
         }
     }, [userInfo]);
 
-    useEffect(()=>{
+    useEffect(() => {
+        if (allFiles) {
+            setRoomFiles(() => (
+                allFiles.filter((file) => file.parentId === (currFile != null ? currFile._id : null))
+            ));
+
+        }
+    }, [allFiles])
+
+    useEffect(() => {
         if (userInfo && roomInfo) {
             const userExists = roomInfo.users.some((user) => user.userId._id === userInfo._id);
             setAllowed(userExists);
             setLoading(false);
         }
-    },[roomInfo])
-
-    
-
-    const fetchRoomFiles = useCallback(async () => {
-        try {
-            const response = await getRoomFiles({ id1, parentId: currFile ? currFile._id : 'root' });
-            if (response.error) {
-                setRoomFiles([]);
-            } else {
-                setRoomFiles(response.files);
-                setPathHistory([...pathHistory, response.files]);
-            }
-        } catch (error) {
-            console.error("Error fetching room files:", error);
-        }
-    }, [id1, currFile, pathHistory]);
-
-    useEffect(() => {
-        if (roomInfo) {
-            fetchRoomFiles();
-            setAdmin(() => roomInfo.users.filter((user) => user.role === 'Admin'));
-        }
-    }, [roomInfo]);
+    }, [roomInfo])
 
     const fetchTask = useCallback(async () => {
         try {
@@ -138,17 +125,12 @@ function RoomPage({ pusher }) {
 
     const handleOpenFile = useCallback(async (fileInfo) => {
         if (fileInfo.type === 'folder') {
-            try {
-                const response = await getRoomFiles({ id1, parentId: fileInfo._id });
-                if (!response.error) {
-                    setFilePath(fileInfo.path === '/' ? `/${fileInfo.name}` : `${fileInfo.path}/${fileInfo.name}`);
-                    setPathHistory([...pathHistory, fileInfo]);
-                    setCurrFile(fileInfo);
-                    setRoomFiles(response.files);
-                }
-            } catch (error) {
-                console.error("Error opening file:", error);
-            }
+            setFilePath(fileInfo.path === '/' ? `/${fileInfo.name}` : `${fileInfo.path}/${fileInfo.name}`);
+            setPathHistory([...pathHistory, fileInfo]);
+            setCurrFile(fileInfo);
+            setRoomFiles(() => (
+                allFiles.filter((file) => file.parentId === fileInfo._id)
+            ))
         } else {
             navigate(`/room/${roomInfo._id}/${id2}/${fileInfo._id}`);
         }
@@ -156,14 +138,11 @@ function RoomPage({ pusher }) {
 
     const handlePath = async (path) => {
         if (path === '/') {
-            const response = await getRoomFiles({ id1, parentId: 'root' });
-            if (response.error) {
-                setRoomFiles([]);
-            } else {
-                setRoomFiles(response.files);
-                setPathHistory([]);
-                setFilePath('/');
-            }
+            setRoomFiles(() => (
+                allFiles.filter((file) => file.parentId === null)
+            ));
+            setPathHistory([]);
+            setFilePath('/');
         } else {
             const file = pathHistory.find((file) => file.name === path);
             handleOpenFile(file);
@@ -225,8 +204,8 @@ function RoomPage({ pusher }) {
                             <div className='flex flex-wrap gap-1 my-2 flex-col'>
                                 {roomFiles[0] ?
                                     roomFiles.map((file, index) =>
-                                        <div key={index} onClick={() => { handleOpenFile(file) }}>
-                                            <RoomFiles fileInfo={file} />
+                                        <div key={index} >
+                                            <RoomFiles fileInfo={file} openFn={handleOpenFile} />
                                         </div>)
                                     : <div className='w-full h-full flex justify-center items-center text-gray-500 m-4'>
                                         No files
@@ -299,10 +278,10 @@ function RoomUsers({ roomInfo, admin, user, setToggleView, toggleView }) {
     return (
         <>
             <div className='w-full bg-primaryBackground relative justify-between flex h-fit p-2'>
-                <div className='w-5/12 text-white flex gap-1 items-center relative' onClick={() => setShowUsers('visible')}>
+                <div className='w-5/12 text-white flex gap-1 items-center relative cursor-pointer ' onClick={() => setShowUsers('visible')}>
                     Users
                 </div>
-                <div className={`flex absolute left-2 top-12 gap-2 w-64 bg-black h-[300px] p-2 z-20 ${showUsers}`}>
+                <div className={`flex absolute left-2 top-12 gap-2 w-64 bg-secondaryBackground rounded-md h-[300px] p-2 z-20 ${showUsers}`}>
                     <button className='flex justify-end w-full' onClick={() => setShowUsers('hidden')}><IoCloseCircle className='text-white text-xl' /></button>
                     {/* {
                         roomInfo.users.map((user) => (
@@ -421,20 +400,55 @@ const CreateDiv = React.memo(({ visibility, setVisibility, currFile }) => {
     )
 })
 
-function RoomFiles({ fileInfo }) {
+function RoomFiles({ fileInfo, openFn }) {
+    const dispatch = useDispatch();
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDelete = async (info) => {
+        setIsDeleting(true);
+        try {
+            await dispatch(deleteRoomFileAsync(info));
+        } catch (error) {
+            console.error('Error deleting file:', error);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+
+    // last Update time to be added
+
     return (
-        <div className='cursor-pointer'>
-            <div className='bg-black rounded-md w-full h-[40px] flex justify-center items-center px-3 overflow-clip'>
-                <span className='text-primaryBlue text-xl font-bolder mr-2'>{fileInfo.type == 'code' ? <FaCode /> : fileInfo.type == 'text' ? <MdOutlineTextFields className='text-white' /> : <FaFolder className='text-yellow-500' />}</span>
-                <div className='text-white overflow-clip text-lg w-full'>{fileInfo.name}</div>
-                <div className='flex justify-between items-center'>\
-                    <span className='text-white text-xl font-bolder mr-2'><FaEdit /></span>
-                    <span className='text-red-500 text-xl font-bolder mr-2'><MdDelete /></span>
+        <div className={`cursor-pointer `}>
+            <div className={`bg-black rounded-md w-full h-[40px] flex justify-center items-center overflow-clip `}>
+                <div
+                    className='flex w-10/12 items-center px-3'
+                    onClick={() =>openFn(fileInfo)}
+                >
+                    <span className='text-primaryBlue text-xl font-bolder mr-2'>
+                        {fileInfo.type === 'code' ? <FaCode /> : fileInfo.type === 'text' ? <MdOutlineTextFields className='text-white' /> : <FaFolder className='text-yellow-500' />}
+                    </span>
+                    <input
+                        className={`text-white overflow-clip text-lg w-full bg-transparent cursor-pointer border-none outline-none`}
+                        value={fileInfo.name}
+                        readOnly={true}
+                    />
+                </div>
+                <div className='flex justify-between items-center ps-3'>
+                    
+                    <span
+                        className={`text-red-500 text-xl font-bolder mr-2 z-20 ${isDeleting ? 'opacity-50 text-red-700' : 'opacity-100'}`}
+                        onClick={() => handleDelete({ id: fileInfo._id, roomId: fileInfo.roomId })}
+                    >
+                        <MdDelete />
+                    </span>
                 </div>
             </div>
         </div>
-    )
+    );
 }
+
+
 
 
 

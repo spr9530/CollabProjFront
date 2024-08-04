@@ -1,4 +1,4 @@
-import { addRoomData, createRoomApi, createRoomFile, deleteRoom, getRoomData, getRoomInfo, updateRoomUsers } from './RoomApi';
+import { addRoomData, createRoomApi, createRoomFile, deleteRoom, deleteRoomFiles, getRoomData, getRoomInfo, updateRoomFiles, updateRoomUsers } from './RoomApi';
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
@@ -60,8 +60,25 @@ const addRoomDataAsync = createAsyncThunk(
     }
   )
 
+  const deleteRoomFileAsync = createAsyncThunk(
+    'room/deleteRoomFileAsync',
+    async(info)=>{
+        const response = await deleteRoomFiles(info);
+        return response.roomInfo;
+    }
+  )
+
+  const updateRoomFileAsync = createAsyncThunk(
+    'room/updateRoomFileAsync',
+    async(info) => {
+        const response = await updateRoomFiles(info);
+        return response.roomInfo;
+    }
+  )
+
 const initialState = {
     roomInfo:null,
+    roomFiles:null,
     currRoom:null,
     newRoom: null,
     allRooms:null,
@@ -148,6 +165,7 @@ const roomSlice = createSlice({
             .addCase(createRoomFileAsync.fulfilled,(state, action)=>{
                 state.loading = false;
                 state.currRoom = action.payload;
+                state.roomFiles = action.payload.roomFiles;
             }) 
             .addCase(createRoomFileAsync.rejected, (state, action) => {
                 state.loading = false;
@@ -160,8 +178,35 @@ const roomSlice = createSlice({
             .addCase(getCurrRoomAsync.fulfilled,(state, action)=>{
                 state.loading = false;
                 state.currRoom = action.payload;
+                state.roomFiles = action.payload.roomFiles;
             }) 
             .addCase(getCurrRoomAsync.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error.message;
+            })
+            .addCase(deleteRoomFileAsync.pending, (state)=>{
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(deleteRoomFileAsync.fulfilled,(state, action)=>{
+                state.loading = false;
+                state.currRoom = action.payload;
+                state.roomFiles = action.payload.roomFiles;
+            }) 
+            .addCase(deleteRoomFileAsync.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error.message;
+            })
+            .addCase(updateRoomFileAsync.pending, (state)=>{
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(updateRoomFileAsync.fulfilled,(state, action)=>{
+                state.loading = false;
+                state.currRoom = action.payload;
+                state.roomFiles = action.payload.roomFiles;
+            }) 
+            .addCase(updateRoomFileAsync.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.error.message;
             })
@@ -175,7 +220,10 @@ export const { setRoomTextEditor, setRoomWhiteBoard, setRoomCodeEditor } = roomS
 export const selectRoomInfo = (state) => state.room.roomInfo;
 export const selectNewRoom  = (state) => state.room.newRoom;
 export const selectCurrRoom = (state) => state.room.currRoom;
+export const selectCurrRoomFiles = (state) => state.room.roomFiles;
 
-export { addRoomDataAsync, createRoomAsync, getRoomDataAsync,updateRoomUsersAsync, deleteRoomAsync, createRoomFileAsync,getCurrRoomAsync }; 
+export { addRoomDataAsync, createRoomAsync, getRoomDataAsync,updateRoomUsersAsync, deleteRoomAsync, createRoomFileAsync,getCurrRoomAsync,
+    deleteRoomFileAsync, updateRoomFileAsync
+ }; 
 
 export default roomSlice.reducer;
