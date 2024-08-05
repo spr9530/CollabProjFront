@@ -360,6 +360,7 @@ export const deleteRoomFiles = ({ id, roomId }) => {
         }
     });
 };
+
 export const updateRoomFiles = ({data, fileId, roomId}) => {
     return new Promise(async (resolve, reject) => {
         try {

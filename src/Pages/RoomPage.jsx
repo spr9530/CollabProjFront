@@ -7,7 +7,6 @@ import { MdOutlineTextFields } from "react-icons/md";
 import { VscRootFolderOpened } from "react-icons/vsc";
 import { FaUser } from "react-icons/fa";
 import { FaVideo } from "react-icons/fa6";
-import { FaEdit } from "react-icons/fa";
 import { FaFolder } from "react-icons/fa";
 import { FaPencilRuler } from "react-icons/fa";
 import { IoCloseCircle } from "react-icons/io5";
@@ -20,11 +19,11 @@ import { acceptPermission, createRoomFile, downloadFiles, getRoomFiles, getRoomI
 import { useForm } from "react-hook-form";
 import Navbar from '../components/Navbar';
 import CreateTask from '../components/CreateTask';
-import { getUsersTask } from '../task/TaskApi';
 import TaskInfo from '../components/TaskInfo';
 import { triggerEvent } from '../socket/trigger';
 import { getLoggedUserAsync, getUser } from '../user/userSlice';
-import { createRoomFileAsync, deleteRoomAsync, deleteRoomFileAsync, getCurrRoomAsync, selectCurrRoom, selectCurrRoomFiles, updateRoomFileAsync } from '../roomSlice/RoomSlice';
+import { createRoomFileAsync, deleteRoomFileAsync, getCurrRoomAsync, selectCurrRoom, selectCurrRoomFiles, updateRoomFileAsync } from '../roomSlice/RoomSlice';
+import { getCurrUserTaskAsync, selectUserTasks } from '../task/TaskSlice';
 
 
 
@@ -35,10 +34,10 @@ function RoomPage({ pusher }) {
     const userInfo = useSelector(getUser);
     const roomInfo = useSelector(selectCurrRoom)
     const allFiles = useSelector(selectCurrRoomFiles)
+    const taskInfo = useSelector(selectUserTasks);
     const [loading, setLoading] = useState(true)
     const [admin, setAdmin] = useState([]);
     const [allowed, setAllowed] = useState(false);
-    const [taskInfo, setTaskInfo] = useState([])
     const [taskUpdated, setTaskUpdated] = useState(false);
     const [roomFiles, setRoomFiles] = useState([])
     const [currFile, setCurrFile] = useState(null)
@@ -58,6 +57,7 @@ function RoomPage({ pusher }) {
     useEffect(() => {
         if (userInfo) {
             dispatch(getCurrRoomAsync(id1));
+            dispatch(getCurrUserTaskAsync({ id1, id2: userInfo._id }))
         }
     }, [userInfo]);
 
@@ -66,7 +66,6 @@ function RoomPage({ pusher }) {
             setRoomFiles(() => (
                 allFiles.filter((file) => file.parentId === (currFile != null ? currFile._id : null))
             ));
-
         }
     }, [allFiles])
 
@@ -77,22 +76,6 @@ function RoomPage({ pusher }) {
             setLoading(false);
         }
     }, [roomInfo])
-
-    const fetchTask = useCallback(async () => {
-        try {
-            const task = await getUsersTask({ id1, id2: userInfo._id });
-            setTaskInfo(task);
-        } catch (error) {
-            console.error("Error fetching tasks:", error);
-        }
-    }, [id1, userInfo]);
-
-    useEffect(() => {
-        if (userInfo || taskUpdated) {
-            fetchTask();
-            setTaskUpdated(false);
-        }
-    }, [userInfo, taskUpdated, fetchTask]);
 
     useEffect(() => {
         const channel = pusher.subscribe(`${id1}`);
@@ -170,11 +153,11 @@ function RoomPage({ pusher }) {
             <div>
 
                 <RoomUsers roomInfo={roomInfo} admin={admin} user={userInfo} setToggleView={setToggleView} toggleView={toggleView} />
-                <CreateTask visibility={taskDivVisibility} setVisibility={setTaskDivVisibility} roomInfo={roomInfo} fetchTask={fetchTask} />
+                <CreateTask visibility={taskDivVisibility} setVisibility={setTaskDivVisibility} roomInfo={roomInfo} />
                 <CreateDiv visibility={createDivVisibility} setVisibility={setCreateDivVisibility} currFile={currFile} />
                 <div className='bg-primaryBackground w-full flex gap-2 justify-center '>
-                    <div className={`w-full  md:w-9/12 shadow-primaryBoxShadow m-2 p-1 md:p-4 rounded-md h-screen overflow-scroll scrollbar-none ${toggleView == 'chat' ? 'hidden' : ''} `}>
-                        <div className='bg-secondaryBackground p-4 rounded-md m-2'>
+                    <div className={`w-full  md:w-8/12 shadow-primaryBoxShadow m-2 p-1 md:p-4 rounded-md h-screen overflow-scroll scrollbar-none ${toggleView == 'chat' ? 'hidden' : ''} `}>
+                        <div className='bg-secondaryBackground w-full p-4 rounded-md m-2'>
                             <div className='flex w-full justify-between'>
                                 <h2 className='text-white text-2xl md:text-3xl font-bold'>Files</h2>
                                 <div className='flex gap-2'>
@@ -212,7 +195,7 @@ function RoomPage({ pusher }) {
                                     </div>}
                             </div>
                         </div>
-                        <div className='bg-secondaryBackground p-4 rounded-md m-2'>
+                        <div className='bg-secondaryBackground w-full p-4 rounded-md m-2'>
                             <div className='flex w-full justify-between'>
                                 <h2 className='text-white text-2xl md:text-3xl font-bold'>Tasks</h2>
                                 <button
@@ -221,16 +204,16 @@ function RoomPage({ pusher }) {
                                     onClick={() => { setTaskDivVisibility('visible') }}
                                 >Create Task <FaPencilRuler /></button>
                             </div>
-                            <div className='flex flex-wrap gap-3 my-2'>
-                                {taskInfo && taskInfo.userTask ? taskInfo.userTask.map((task, index) =>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 my-2 w-full">
+                                {taskInfo && taskInfo.userTask ? taskInfo.userTask.map((task, index) => (
                                     <div key={index}>
                                         <TaskInfo taskInfo={task} taskUpdated={taskUpdated} setTaskUpdated={setTaskUpdated} />
                                     </div>
-                                ) : <div>No Task</div>}
+                                )) : <div className='text-whte font-bold'>No Task</div>}
                             </div>
                         </div>
                     </div>
-                    <div className={`w-full md:w-3/12 shadow-primaryBoxShadow h-screen relative top-0 right-0 m-2 p-4 rounded-md ${toggleView == 'chat' ? 'flex' : 'hidden'} md:flex flex-col`}>
+                    <div className={`w-full md:w-4/12 shadow-primaryBoxShadow h-screen relative top-0 right-0 m-2 p-4 rounded-md ${toggleView == 'chat' ? 'flex' : 'hidden'} md:flex flex-col`}>
                         <h2 className='text-white text-2xl font-bold flex items-center h-fit w-full justify-between'> <span className='text-yellow-600'><FaRegBell /></span> </h2>
                         <div className='py-2 h-full w-full overflow-scroll scrollbar-none flex flex-col gap-2'>
                         </div>
@@ -423,7 +406,7 @@ function RoomFiles({ fileInfo, openFn }) {
             <div className={`bg-black rounded-md w-full h-[40px] flex justify-center items-center overflow-clip `}>
                 <div
                     className='flex w-10/12 items-center px-3'
-                    onClick={() =>openFn(fileInfo)}
+                    onClick={() => openFn(fileInfo)}
                 >
                     <span className='text-primaryBlue text-xl font-bolder mr-2'>
                         {fileInfo.type === 'code' ? <FaCode /> : fileInfo.type === 'text' ? <MdOutlineTextFields className='text-white' /> : <FaFolder className='text-yellow-500' />}
@@ -435,9 +418,9 @@ function RoomFiles({ fileInfo, openFn }) {
                     />
                 </div>
                 <div className='flex justify-between items-center ps-3'>
-                    
+
                     <span
-                        className={`text-red-500 text-xl font-bolder mr-2 z-20 ${isDeleting ? 'opacity-50 text-red-700' : 'opacity-100'}`}
+                        className={`text-red-500 text-xl font-bolder mr-2  ${isDeleting ? 'opacity-50 text-red-700' : 'opacity-100'}`}
                         onClick={() => handleDelete({ id: fileInfo._id, roomId: fileInfo.roomId })}
                     >
                         <MdDelete />

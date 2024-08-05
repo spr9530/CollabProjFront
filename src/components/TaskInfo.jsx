@@ -1,51 +1,63 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { deleteUserTask, getUsersTask, updateTaskStep } from '../task/TaskApi';
 import { IoCloseCircle } from 'react-icons/io5';
+import { useDispatch, useSelector } from 'react-redux';
+import { deleteTaskAsync, updateTaskAsync } from '../task/TaskSlice';
+import { useParams } from 'react-router-dom';
+import { getUser } from '../user/userSlice';
 
 function TaskInfo({ taskInfo, taskUpdated, setTaskUpdated }) {
-
-
-    const [showTask, setShowTask] = useState('hidden')
+    const [showTask, setShowTask] = useState('hidden');
     const [deletTaskBtn, setDeleteTaskBtn] = useState(false);
-    const [taskCompletion, setTaskCompletion] = useState(null)
+    const [taskCompletion, setTaskCompletion] = useState({ width: '0%', color: 'bg-primaryGreen' });
+    const [loadingDelete, setLoadingDelete] = useState(false);
+    const dispatch = useDispatch();
+    const { id1 } = useParams();
+    const userInfo = useSelector(getUser);
 
     useEffect(() => {
-
         const calculateTaskCompletion = () => {
             const taskDone = taskInfo.taskStep.filter((task) => task.done === true);
             const totalTask = taskInfo.taskStep.length;
             const completionPercentage = Math.floor((taskDone.length / totalTask) * 100);
-
             if (isNaN(completionPercentage) || !isFinite(completionPercentage)) {
-                setTaskCompletion('w-0');
+                setTaskCompletion({ width: '0%', color: 'bg-primaryGreen' });
             } else {
-                if (completionPercentage == 0) {
-                    setTaskCompletion('w-0');
-                } else setTaskCompletion(`w-[${completionPercentage}%]`);
+                let color = 'bg-primaryGreen';
+                if (completionPercentage < 50) {
+                    color = 'bg-red-400';
+                } else if (completionPercentage < 100) {
+                    color = 'bg-yellow-400';
+                } else {
+                    color = 'bg-green-400';
+                }
+                setTaskCompletion({ width: `${completionPercentage}%`, color });
             }
-            if (completionPercentage == 100) {
+            if (completionPercentage === 100) {
                 setDeleteTaskBtn(true);
-            } else setDeleteTaskBtn(false)
+            } else {
+                setDeleteTaskBtn(false);
+            }
         };
-
-        calculateTaskCompletion();
-
-    }, [taskInfo])
+        if (taskInfo.done) {
+            setTaskCompletion({ width: '100%', color: 'bg-primaryGreen' });
+            setDeleteTaskBtn(true);
+        } else calculateTaskCompletion();
+    }, [taskInfo]);
 
     const handleDeleteTask = async (id) => {
-        const task = await deleteUserTask(id)
-        setTaskUpdated(true)
-    }
+        setLoadingDelete(true);
+        await dispatch(deleteTaskAsync({ taskId: id, id1, id2: userInfo._id }));
+        setLoadingDelete(false);
+        setTaskUpdated(true);
+    };
 
     return (
-
         <>
             <ViewTask taskInfo={taskInfo} taskUpdated={taskUpdated} setTaskUpdated={setTaskUpdated} visibility={showTask} setVisibility={setShowTask} />
-            <div className=' h-[150px] w-[200px] rounded-md bg-primaryBackground p-2cursor-pointer'>
-                <div className='flex flex-col justify-between h-full  p-2'>
+            <div className='h-[150px] w-full rounded-md bg-primaryBackground p-2 cursor-pointer'>
+                <div className='flex flex-col justify-between h-full p-2'>
                     <div>
-
                         <h3 className='text-white text-md font-semibold'>{taskInfo.taskName}</h3>
                     </div>
                     <div className='w-full'>
@@ -53,71 +65,63 @@ function TaskInfo({ taskInfo, taskUpdated, setTaskUpdated }) {
                     </div>
                     <div className='w-full'>
                         <div className='w-full h-2 bg-secondaryBackground rounded-md my-2'>
-                            {taskCompletion
-                                &&
-                                <div className={` h-full bg-primaryGreen rounded-md ${taskCompletion} `}>
-                                </div>}
+                            <div className={`h-full rounded-md ${taskCompletion.color}`} style={{ width: taskCompletion.width }}></div>
                         </div>
                     </div>
                     <div className='text-secondaryText text-sm w-full flex justify-between'>
-                        <button className='bg-purple-700 text-white p-1 px-3 rounded-lg group hover:scale-105 ' onClick={() => { setShowTask('visible') }}>View</button>
+                        <button className='bg-purple-700 text-white p-1 px-3 rounded-lg group hover:scale-105' onClick={() => { setShowTask('visible') }}>View</button>
                         {deletTaskBtn &&
-                            <button className='bg-red-400 text-white p-1 px-3 rounded-lg group hover:scale-105' onClick={() => { handleDeleteTask(taskInfo._id) }} >Delete</button>
+                            <button className='bg-red-400 text-white p-1 px-3 rounded-lg group hover:scale-105' onClick={() => { handleDeleteTask(taskInfo._id) }} disabled={loadingDelete}>
+                                {loadingDelete ? 'Deleting...' : 'Delete'}
+                            </button>
                         }
                     </div>
                 </div>
             </div>
         </>
-    )
+    );
 }
 
 function ViewTask({ taskInfo, taskUpdated, setTaskUpdated, visibility, setVisibility }) {
-
     const { register, handleSubmit } = useForm();
-
-    const [editMode, setEditMode] = useState(false)
+    const [editMode, setEditMode] = useState(false);
+    const [loadingSave, setLoadingSave] = useState(false);
+    const dispatch = useDispatch();
+    const { id1 } = useParams();
+    const userInfo = useSelector(getUser);
 
     const handleUpdateTask = async (data) => {
-
+        setLoadingSave(true);
         let taskStep = taskInfo.taskStep.map((step, index) => {
-            if (data[`taskStep-${index}`] == false) {
-                return {
-                    ...step,
-                    done: false
-                };
-            }
-            else {
-                return {
-                    ...step,
-                    done: true
-                }
-            }
-        })
+            return {
+                ...step,
+                done: data[`taskStep-${index}`] ? true : false
+            };
+        });
+        await dispatch(updateTaskAsync({ taskId: taskInfo._id, data: { ...taskInfo, taskStep: taskStep }, id1, id2: userInfo._id }));
+        setLoadingSave(false);
+        setTaskUpdated(true);
+        if (editMode) setEditMode(false);
+    };
 
-        const updateTask = await updateTaskStep({ id: taskInfo._id, taskStep })
-        setTaskUpdated(true)
-        if (editMode) setEditMode(false)
+    const markTaskDone = async (taskInfo, done) => {
+        await dispatch(updateTaskAsync({ taskId: taskInfo._id, data: { ...taskInfo, done: done }, id1, id2: userInfo._id }));
     }
 
     useEffect(() => {
         if (taskUpdated) {
-            setTaskUpdated(false)
+            setTaskUpdated(false);
         }
-    }, [taskUpdated])
+    }, [taskUpdated]);
 
     const handleEditMode = () => {
-        if (editMode) {
-            setEditMode(false)
-        } else setEditMode(true);
-    }
+        setEditMode(!editMode);
+    };
 
     return (
         <div className={`absolute w-[80vh] h-screen flex flex-col justify-center items-center top-0 left-0 ${visibility} z-20`} >
-
             <div className={`fixed left-1/2 transform -translate-x-1/2 top-1/2 -translate-y-1/2 bg-black rounded-md w-7/12 h-[fit] max-h-[98vh] flex flex-col items-center p-3 overflow-scroll scrollbar-none`}>
                 <button className='w-full flex justify-end' onClick={() => setVisibility('hidden')}> <IoCloseCircle className='text-white text-xl' /></button>
-
-
                 <div className='w-full'>
                     <div className='flex w-full gap-2'>
                         <div className='flex w-full flex-col gap-2'>
@@ -135,17 +139,19 @@ function ViewTask({ taskInfo, taskUpdated, setTaskUpdated, visibility, setVisibi
                     </div>
                 </div>
                 <div className='w-full my-2'>
-                    {taskInfo.taskStep[0] ? <form onSubmit={handleSubmit((data) => {
-                        handleUpdateTask(data)
+                    {taskInfo.taskStep && taskInfo.taskStep[0] ? <form onSubmit={handleSubmit((data) => {
+                        handleUpdateTask(data);
                     })} className='w-full'>
                         <div className='w-full flex justify-between items-center'>
                             <div className='text-white'>Steps</div>
                             <div className='flex gap-2'>
                                 {taskInfo.taskStep && !editMode && <button type='button' className='p-1 rounded-md bg-red-400' onClick={handleEditMode}>Edit</button>}
-                                {taskInfo.taskStep && <button type='submit' className='p-1 rounded-md bg-primaryGreen'>Save</button>}
+                                {taskInfo.taskStep && <button type='submit' className='p-1 rounded-md bg-primaryGreen' disabled={loadingSave}>
+                                    {loadingSave ? 'Saving...' : 'Save'}
+                                </button>}
                             </div>
                         </div>
-                        {taskInfo.taskStep ? taskInfo.taskStep.map((step, index) => (
+                        {taskInfo.taskStep.map((step, index) => (
                             <div key={index} className='bg-secondaryBackground rounded-md border-purple-500 border my-2 p-2'>
                                 <div className='text-white justify-between flex'>
                                     <span>{index + 1}</span>
@@ -172,14 +178,22 @@ function ViewTask({ taskInfo, taskUpdated, setTaskUpdated, visibility, setVisibi
                                     )}
                                 </div>
                             </div>
-                        )) : <div>No steps</div>}
+                        ))}
                     </form> :
-                        <button type='submit' className='p-1 rounded-md bg-primaryGreen'>Done</button>
+                        <>
+                            <div className='text-white font-bold text-center'>No steps</div>
+                            {
+                                taskInfo.done ?
+                                    <button onClick={() => markTaskDone(taskInfo, false)} className='p-1 rounded-md text-white font-semibold bg-red-500'>Undone</button>
+                                    :
+                                    <button onClick={() => markTaskDone(taskInfo, true)} className='p-1 rounded-md text-white font-semibold bg-primaryGreen'>Done</button>
+                            }
+                        </>
                     }
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
-export default TaskInfo
+export default TaskInfo;

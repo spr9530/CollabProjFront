@@ -1,27 +1,34 @@
-export const createRoomTask = async (task) => {
-  const token = localStorage.getItem('token');
+export const createRoomTask = async ({ task, id1, id2 }) => {
+  return new Promise(async (resolve, reject) => {
+    const token = localStorage.getItem('token');
 
-  try {
-    const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/task/createTask`, {
-      method: 'POST', // Use POST for creating new resources
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(task),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || response.statusText);
+    if (!token) {
+      return reject('No authentication token found. Please log in.');
     }
 
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    throw new Error(error.message);
-  }
+    try {
+      const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/task/createTask/${id1}/${id2}`, {
+        method: 'POST', // Use POST for creating new resources
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(task),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return reject(errorData.message || response.statusText);
+      }
+
+      const data = await response.json();
+      resolve(data);
+    } catch (error) {
+      reject('Failed to create task: ' + error.message);
+    }
+  });
 };
+
 
 export const getAllTask = (id) => {
   return new Promise(async (resolve, reject) => {
@@ -76,20 +83,20 @@ export const getUsersTask = ({ id1, id2 }) => {
   })
 }
 
-export const updateTaskStep = ({ id, taskStep }) => {
+export const updateTask = ({ taskId, data, id1, id2 }) => {
   return new Promise(async (resolve, reject) => {
     const token = localStorage.getItem('token');
-
+    console.log(data)
     try {
 
-      const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/task/updateTaskStep/${id}`, {
+      const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/task/updateTaskStep/${taskId}/${id1}/${id2}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(
-          taskStep
+          {data}
         )
       })
 
@@ -108,13 +115,13 @@ export const updateTaskStep = ({ id, taskStep }) => {
   })
 }
 
-export const deleteUserTask = (id) => {
+export const deleteUserTask = ({ taskId, id1, id2 }) => {
   return new Promise(async (resolve, reject) => {
     const token = localStorage.getItem('token');
 
     try {
 
-      const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/task/deleteTask/${id}`, {
+      const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/task/deleteTask/${taskId}/${id1}/${id2}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -144,7 +151,7 @@ export const getUserAllTasks = (id) => {
   return new Promise(async (resolve, reject) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/app/v1/task/allTask/user/${id}`, {
+      const response = await fetch(`https://collab-project-indol.vercel.app/app/v1/task/allTask/user/${id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
