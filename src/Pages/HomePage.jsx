@@ -47,11 +47,11 @@ function HomePage({ pusher }) {
     }, [dispatch])
 
 
-    useEffect(() => {
-        if (userInfo) {
-            dispatch(getAllTaskAsync(userInfo._id))
-        }
-    }, [userInfo])
+    // useEffect(() => {
+    //     if (userInfo) {
+    //         dispatch(getAllTaskAsync(userInfo._id))
+    //     }
+    // }, [userInfo])
 
 
     const handleJoinRoom = useCallback((e) => {
