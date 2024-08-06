@@ -43,7 +43,8 @@ function RoomPage({ pusher }) {
     const [currFile, setCurrFile] = useState(null)
     const [filePath, setFilePath] = useState('/')
     const [pathHistory, setPathHistory] = useState([])
-    const [toggleView, setToggleView] = useState('files');
+    const [toggleView, setToggleView] = useState('file');
+    const [toggleInnerView, setToggelInnerView] = useState('files')
     const [createDivVisibility, setCreateDivVisibility] = useState('hidden')
     const [taskDivVisibility, setTaskDivVisibility] = useState('hidden')
     const [downloadBtn, setDownloadBtn] = useState('enable');
@@ -156,11 +157,14 @@ function RoomPage({ pusher }) {
                 <CreateTask visibility={taskDivVisibility} setVisibility={setTaskDivVisibility} roomInfo={roomInfo} />
                 <CreateDiv visibility={createDivVisibility} setVisibility={setCreateDivVisibility} currFile={currFile} />
                 <div className='bg-primaryBackground w-full flex gap-2 justify-center '>
-                    <div className={`w-full  md:w-8/12 shadow-primaryBoxShadow m-2 p-1 md:p-4 rounded-md h-screen overflow-scroll scrollbar-none ${toggleView == 'chat' ? 'hidden' : ''} `}>
-                        <div className='bg-secondaryBackground w-full p-4 rounded-md m-2'>
-                            <div className='flex w-full justify-between'>
-                                <h2 className='text-white text-2xl md:text-3xl font-bold'>Files</h2>
+                    <div className={`w-full md:w-8/12 shadow-primaryBoxShadow m-2 p-1 md:p-4 rounded-md h-screen overflow-scroll scrollbar-none ${toggleView == 'file' ? '' : 'hidden'} md:block `}>
+                        <div className={`bg-secondaryBackground w-full p-4 rounded-md m-2 ${toggleInnerView == 'files' ? '' : 'hidden'} md:block`}>
+                            <div className='flex flex-col md:flex-row w-full justify-between'>
                                 <div className='flex gap-2'>
+                                    <h2 className='text-white text-2xl md:text-3xl font-bold border-b-2 border-white '>Files</h2>
+                                    <h2 className='text-gray-500 text-2xl md:text-3xl font-bold md:hidden' onClick={() => setToggelInnerView('tasks')}>Tasks</h2>
+                                </div>
+                                <div className='flex gap-2 py-3 md:p-0'>
                                     <button className='bg-purple-600 text-white p-1 px-3 font-semibold rounded-lg flex items-center gap-1' onClick={handleCreate} >  Create <FaFileCirclePlus /> </button>
                                     <button className={` p-1 px-3 rounded-lg flex items-center font-semibold gap-1 ${downloadBtn === 'disable' ? 'bg-purple-400 text-gray-400' : 'bg-purple-600 text-white'}`} disabled={downloadBtn === 'disable'} onClick={handleDownload}>Download</button>
                                 </div>
@@ -195,11 +199,14 @@ function RoomPage({ pusher }) {
                                     </div>}
                             </div>
                         </div>
-                        <div className='bg-secondaryBackground w-full p-4 rounded-md m-2'>
-                            <div className='flex w-full justify-between'>
-                                <h2 className='text-white text-2xl md:text-3xl font-bold'>Tasks</h2>
+                        <div className={`bg-secondaryBackground w-full p-4 rounded-md m-2 ${toggleInnerView == 'tasks' ? '' : 'hidden'} md:block `}>
+                            <div className='flex flex-col md:flex-row w-full justify-between'>
+                                <div className='flex gap-2'>
+                                    <h2 className='text-gray-500 text-2xl md:text-3xl font-bold md:hidden ' onClick={() => setToggelInnerView('files')}>Files</h2>
+                                    <h2 className='text-white text-2xl md:text-3xl font-bold border-b-2 border-white' >Tasks</h2>
+                                </div>
                                 <button
-                                    className='bg-primaryBlue text-white font-semibold p-1 px-3 rounded-lg flex items-center gap-1'
+                                    className='bg-primaryBlue text-white w-fit font-semibold my-3 md:md-0 p-1 px-3 rounded-lg flex items-center gap-1'
                                     type='button'
                                     onClick={() => { setTaskDivVisibility('visible') }}
                                 >Create Task <FaPencilRuler /></button>
@@ -213,8 +220,13 @@ function RoomPage({ pusher }) {
                             </div>
                         </div>
                     </div>
-                    <div className={`w-full md:w-4/12 shadow-primaryBoxShadow h-screen relative top-0 right-0 m-2 p-4 rounded-md ${toggleView == 'chat' ? 'flex' : 'hidden'} md:flex flex-col`}>
+                    <div className={`w-full md:w-4/12 shadow-primaryBoxShadow h-screen relative top-0 right-0 m-2 p-4 rounded-md ${toggleView == 'chat' ? 'flex' : 'hidden'} ${toggleView == 'chat' ? 'md:flex flex-col' : 'hidden'} `}>
                         <h2 className='text-white text-2xl font-bold flex items-center h-fit w-full justify-between'> <span className='text-yellow-600'><FaRegBell /></span> </h2>
+                        <div className='py-2 h-full w-full overflow-scroll scrollbar-none flex flex-col gap-2'>
+                        </div>
+                    </div>
+                    <div className={`w-full md:w-4/12 shadow-primaryBoxShadow h-screen relative top-0 right-0 m-2 p-4 rounded-md ${toggleView == 'users' ? 'flex' : 'hidden'} ${toggleView == 'users' ? 'md:flex flex-col' : 'hidden'}`}>
+                        <h2 className='text-white text-2xl font-bold flex items-center h-fit w-full justify-between'> <span className='text-pink-600'><FaUser /></span> </h2>
                         <div className='py-2 h-full w-full overflow-scroll scrollbar-none flex flex-col gap-2'>
                         </div>
                     </div>
@@ -261,20 +273,6 @@ function RoomUsers({ roomInfo, admin, user, setToggleView, toggleView }) {
     return (
         <>
             <div className='w-full bg-primaryBackground relative justify-between flex h-fit p-2'>
-                <div className='w-5/12 text-white flex gap-1 items-center relative cursor-pointer ' onClick={() => setShowUsers('visible')}>
-                    Users
-                </div>
-                <div className={`flex absolute left-2 top-12 gap-2 w-64 bg-secondaryBackground rounded-md h-[300px] p-2 z-20 ${showUsers}`}>
-                    <button className='flex justify-end w-full' onClick={() => setShowUsers('hidden')}><IoCloseCircle className='text-white text-xl' /></button>
-                    {/* {
-                        roomInfo.users.map((user) => (
-                            <div className='flex text-white max-w-5/12 overflow-clip'>
-                                <span className='bg-white rounded-full h-[25px] w-[25px] mr-2'></span>
-                                {user.userId.userName}
-                            </div>
-                        ))
-                    } */}
-                </div>
                 <div className='w-full flex justify-center gap-3 items-center'>
                     <div className='relative text-xl flex flex-col items-center cursor-pointer'>
                         <div className={`relative text-pink-500 w-fit cursor-pointer pt-2 ${reqstTab}`} onClick={() => setShowRqst('visible')}>
@@ -308,10 +306,21 @@ function RoomUsers({ roomInfo, admin, user, setToggleView, toggleView }) {
                             <span className='text-sm text-white'>Room Meet</span>
                         </Link>
                     </div>
-                    <div className='text-pink-500 text-xl flex flex-col md:hidden items-center cursor-pointer pt-2' onClick={() => toggleView == 'chat' ? setToggleView('file') : setToggleView('chat')}>
-                        {toggleView == 'chat' ? <SiFiles className='mx-auto' /> : <IoChatbubbles className='mx-auto' />}
-                        {toggleView == 'chat' ? <span className='text-sm text-white'>Room Files</span> : <span className='text-sm text-white'>Room Chat</span>}
-
+                    <div className='text-pink-500 text-xl hidden md:flex flex-col  items-center cursor-pointer pt-2' onClick={() => toggleView == 'chat' ? setToggleView('users') : setToggleView('chat')}>
+                        {toggleView == 'chat' || toggleView == 'file' ? <FaUser className='mx-auto' /> : <IoChatbubbles className='mx-auto' />}
+                        {toggleView == 'chat' || toggleView == 'file' ? <span className='text-sm text-white'>Room Users</span> : <span className='text-sm text-white'>Room Chat</span>}
+                    </div>
+                    <div className='text-pink-500 text-xl flex flex-col md:hidden items-center cursor-pointer pt-2' onClick={() => setToggleView('chat')}>
+                        <IoChatbubbles className='mx-auto' />
+                        <span className='text-sm text-white'>Room Chat</span>
+                    </div>
+                    <div className='text-pink-500 text-xl flex flex-col md:hidden items-center cursor-pointer pt-2' onClick={() => setToggleView('users')}>
+                        <FaUser className='mx-auto' />
+                        <span className='text-sm text-white'>Room Users</span>
+                    </div>
+                    <div className='text-pink-500 text-xl flex flex-col md:hidden items-center cursor-pointer pt-2' onClick={() => setToggleView('file')}>
+                        <SiFiles className='mx-auto' />
+                        <span className='text-sm text-white'>Room Files</span>
                     </div>
 
                 </div>

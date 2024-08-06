@@ -5,6 +5,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { deleteTaskAsync, updateTaskAsync } from '../task/TaskSlice';
 import { useParams } from 'react-router-dom';
 import { getUser } from '../user/userSlice';
+import { selectCurrRoom } from '../roomSlice/RoomSlice';
+import { addTodoAsync } from '../todo/todoSlice';
 
 function TaskInfo({ taskInfo, taskUpdated, setTaskUpdated }) {
     const [showTask, setShowTask] = useState('hidden');
@@ -55,7 +57,7 @@ function TaskInfo({ taskInfo, taskUpdated, setTaskUpdated }) {
     return (
         <>
             <ViewTask taskInfo={taskInfo} taskUpdated={taskUpdated} setTaskUpdated={setTaskUpdated} visibility={showTask} setVisibility={setShowTask} />
-            <div className='h-[150px] w-full rounded-md bg-primaryBackground p-2 cursor-pointer'>
+            <div className='min-h-[150px] w-full rounded-md bg-primaryBackground p-2 cursor-pointer'>
                 <div className='flex flex-col justify-between h-full p-2'>
                     <div>
                         <h3 className='text-white text-md font-semibold'>{taskInfo.taskName}</h3>
@@ -68,7 +70,7 @@ function TaskInfo({ taskInfo, taskUpdated, setTaskUpdated }) {
                             <div className={`h-full rounded-md ${taskCompletion.color}`} style={{ width: taskCompletion.width }}></div>
                         </div>
                     </div>
-                    <div className='text-secondaryText text-sm w-full flex justify-between'>
+                    <div className='text-secondaryText text-sm w-full flex flex-col md:flex-row justify-between space-y-2 md:space-y-0'>
                         <button className='bg-purple-700 text-white p-1 px-3 rounded-lg group hover:scale-105' onClick={() => { setShowTask('visible') }}>View</button>
                         {deletTaskBtn &&
                             <button className='bg-red-400 text-white p-1 px-3 rounded-lg group hover:scale-105' onClick={() => { handleDeleteTask(taskInfo._id) }} disabled={loadingDelete}>
@@ -79,6 +81,7 @@ function TaskInfo({ taskInfo, taskUpdated, setTaskUpdated }) {
                 </div>
             </div>
         </>
+
     );
 }
 
@@ -89,6 +92,7 @@ function ViewTask({ taskInfo, taskUpdated, setTaskUpdated, visibility, setVisibi
     const dispatch = useDispatch();
     const { id1 } = useParams();
     const userInfo = useSelector(getUser);
+    const roomInfo = useSelector(selectCurrRoom)
 
     const handleUpdateTask = async (data) => {
         setLoadingSave(true);
@@ -108,6 +112,18 @@ function ViewTask({ taskInfo, taskUpdated, setTaskUpdated, visibility, setVisibi
         await dispatch(updateTaskAsync({ taskId: taskInfo._id, data: { ...taskInfo, done: done }, id1, id2: userInfo._id }));
     }
 
+    const handleAddTodo = (info) => {
+        let data = {
+            taskName: info.taskName,
+            taskDate: info.taskDate,
+            taskDescription: info.taskDescription,
+            from: roomInfo.roomName,
+            roomAddress: `${roomInfo._id}/${roomInfo.roomCode}`,
+        }
+        console.log(data)
+        dispatch(addTodoAsync(data));
+    }
+
     useEffect(() => {
         if (taskUpdated) {
             setTaskUpdated(false);
@@ -119,81 +135,92 @@ function ViewTask({ taskInfo, taskUpdated, setTaskUpdated, visibility, setVisibi
     };
 
     return (
-        <div className={`absolute w-[80vh] h-screen flex flex-col justify-center items-center top-0 left-0 ${visibility} z-20`} >
-            <div className={`fixed left-1/2 transform -translate-x-1/2 top-1/2 -translate-y-1/2 bg-black rounded-md w-7/12 h-[fit] max-h-[98vh] flex flex-col items-center p-3 overflow-scroll scrollbar-none`}>
-                <button className='w-full flex justify-end' onClick={() => setVisibility('hidden')}> <IoCloseCircle className='text-white text-xl' /></button>
+        <div className={`absolute w-[80vh] md:w-[70vh] lg:w-[60vh] xl:w-[50vh] text-white flex flex-col justify-center items-center top-0 left-0 ${visibility} z-20`}>
+            <div className={`fixed left-1/2 transform -translate-x-1/2 top-1/2 -translate-y-1/2 bg-black rounded-md w-11/12 md:w-9/12 lg:w-7/12 xl:w-5/12 max-h-[98vh] flex flex-col items-center p-3 overflow-auto scrollbar-none`}>
+                <div className='w-full flex justify-between'>
+                    <button className='bg-blue-500 text-white rounded-md p-1' onClick={()=> handleAddTodo(taskInfo)}>Add ToDo</button>
+                    <button className='flex justify-end' onClick={() => setVisibility('hidden')}>
+                        <IoCloseCircle className='text-white text-xl' />
+                    </button>
+                </div>
                 <div className='w-full'>
-                    <div className='flex w-full gap-2'>
+                    <div className='flex flex-col md:flex-row w-full gap-2'>
                         <div className='flex w-full flex-col gap-2'>
-                            <div className='text-white'>Task Name</div>
-                            <input type="text" disabled value={taskInfo.taskName} />
+                            <div className='text-white w-full flex justify-between items-center'><span>Task Name</span> </div>
+                            <input className='p-1 rounded-md bg-gray-700' type="text" disabled value={taskInfo.taskName} />
                         </div>
                         <div className='flex w-full flex-col gap-2'>
                             <div className='text-white'>Due Date</div>
-                            <input type="text" disabled value={taskInfo.taskDate} />
+                            <input className='p-1 rounded-md bg-gray-700' type="text" disabled value={taskInfo.taskDate} />
                         </div>
                     </div>
                     <div className='w-full'>
                         <div className='text-white'>Description</div>
-                        <input type="text" className='w-full' disabled value={taskInfo.taskDescription} />
+                        <input type="text" className='w-full p-1 rounded-md bg-gray-700' disabled value={taskInfo.taskDescription} />
                     </div>
                 </div>
                 <div className='w-full my-2'>
-                    {taskInfo.taskStep && taskInfo.taskStep[0] ? <form onSubmit={handleSubmit((data) => {
-                        handleUpdateTask(data);
-                    })} className='w-full'>
-                        <div className='w-full flex justify-between items-center'>
-                            <div className='text-white'>Steps</div>
-                            <div className='flex gap-2'>
-                                {taskInfo.taskStep && !editMode && <button type='button' className='p-1 rounded-md bg-red-400' onClick={handleEditMode}>Edit</button>}
-                                {taskInfo.taskStep && <button type='submit' className='p-1 rounded-md bg-primaryGreen' disabled={loadingSave}>
-                                    {loadingSave ? 'Saving...' : 'Save'}
-                                </button>}
+                    {taskInfo.taskStep && taskInfo.taskStep[0] ? (
+                        <form onSubmit={handleSubmit((data) => {
+                            handleUpdateTask(data);
+                        })} className='w-full'>
+                            <div className='w-full flex justify-between items-center'>
+                                <div className='text-white'>Steps</div>
+                                <div className='flex gap-2'>
+                                    {taskInfo.taskStep && !editMode && (
+                                        <button type='button' className='p-1 rounded-md bg-red-400 w-20' onClick={handleEditMode}>Edit</button>
+                                    )}
+                                    {taskInfo.taskStep && (
+                                        <button type='submit' className='p-1 rounded-md bg-primaryGreen w-20' disabled={loadingSave}>
+                                            {loadingSave ? 'Saving...' : 'Save'}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                        {taskInfo.taskStep.map((step, index) => (
-                            <div key={index} className='bg-secondaryBackground rounded-md border-purple-500 border my-2 p-2'>
-                                <div className='text-white justify-between flex'>
-                                    <span>{index + 1}</span>
-                                    <div className='w-10/12 overflow-x-clip'>{step.taskName}</div>
-                                    {!editMode ? (
-                                        step.done ? (
-                                            <>Done</>
+                            {taskInfo.taskStep.map((step, index) => (
+                                <div key={index} className='bg-secondaryBackground rounded-md border-purple-500 border my-2 p-2'>
+                                    <div className='text-white justify-between flex'>
+                                        <span>{index + 1}</span>
+                                        <div className='w-10/12 overflow-x-clip'>{step.taskName}</div>
+                                        {!editMode ? (
+                                            step.done ? (
+                                                <>Done</>
+                                            ) : (
+                                                <input
+                                                    type="checkbox"
+                                                    name={`taskStep-${index}`}
+                                                    {...register(`taskStep-${index}`)}
+                                                    id={`taskStep-${index}`}
+                                                />
+                                            )
                                         ) : (
                                             <input
                                                 type="checkbox"
                                                 name={`taskStep-${index}`}
+                                                defaultChecked={step.done}
                                                 {...register(`taskStep-${index}`)}
                                                 id={`taskStep-${index}`}
                                             />
-                                        )
-                                    ) : (
-                                        <input
-                                            type="checkbox"
-                                            name={`taskStep-${index}`}
-                                            defaultChecked={step.done}
-                                            {...register(`taskStep-${index}`)}
-                                            id={`taskStep-${index}`}
-                                        />
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </form> :
+                            ))}
+                        </form>
+                    ) : (
                         <>
                             <div className='text-white font-bold text-center'>No steps</div>
-                            {
-                                taskInfo.done ?
-                                    <button onClick={() => markTaskDone(taskInfo, false)} className='p-1 rounded-md text-white font-semibold bg-red-500'>Undone</button>
-                                    :
-                                    <button onClick={() => markTaskDone(taskInfo, true)} className='p-1 rounded-md text-white font-semibold bg-primaryGreen'>Done</button>
-                            }
+                            {taskInfo.done ? (
+                                <button onClick={() => markTaskDone(taskInfo, false)} className='p-1 rounded-md text-white font-semibold bg-red-500'>Undone</button>
+                            ) : (
+                                <button onClick={() => markTaskDone(taskInfo, true)} className='p-1 rounded-md text-white font-semibold bg-primaryGreen'>Done</button>
+                            )}
                         </>
-                    }
+                    )}
                 </div>
             </div>
         </div>
     );
+
 }
 
 export default TaskInfo;

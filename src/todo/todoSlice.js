@@ -11,7 +11,6 @@ export const addTodoAsync = createAsyncThunk(
     'todo/addTodoAsync',
     async(data) => {
         const response = await addTodo(data);
-        console.log(response.data)
         return response.data
     }
 )

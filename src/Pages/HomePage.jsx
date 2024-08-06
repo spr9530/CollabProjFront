@@ -69,7 +69,7 @@ function HomePage({ pusher }) {
     }, [navigate]);
 
 
-    const toggleViewTask = (id, from) => {
+    const toggleViewTask = (id, from, roomAddress) => {
         if (from == "Self") {
             setViewTasks((prevViewTasks) => ({
                 ...prevViewTasks,
@@ -77,7 +77,7 @@ function HomePage({ pusher }) {
             }));
         }
         else {
-            // navigate(`/room/${roomInfo._id}/${roomInfo.roomCode}`);
+            navigate(`/room/${roomAddress}`);
         }
     };
 
@@ -92,7 +92,7 @@ function HomePage({ pusher }) {
     }
 
 
-    if (!userInfo && !roomInfo ) {
+    if (!userInfo && !roomInfo) {
         return <>Loading....</>
     }
     return (
@@ -215,7 +215,7 @@ function HomePage({ pusher }) {
                                             <div className='flex w-full justify-between pt-4 '>
                                                 <button
                                                     className={`${viewTasks[todo._id] ? 'bg-red-500' : 'bg-pink-600'} rounded-md py-1 px-3`}
-                                                    onClick={() => toggleViewTask(todo._id, todo.from)}
+                                                    onClick={() => toggleViewTask(todo._id, todo.from, todo.roomAddress)}
                                                 >
                                                     {viewTasks[todo._id] ? 'Close' : 'View'}
                                                 </button>
