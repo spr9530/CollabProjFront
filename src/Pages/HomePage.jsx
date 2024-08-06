@@ -92,7 +92,7 @@ function HomePage({ pusher }) {
     }
 
 
-    if (!userInfo && !roomInfo && !taskInfo) {
+    if (!userInfo && !roomInfo ) {
         return <>Loading....</>
     }
     return (
