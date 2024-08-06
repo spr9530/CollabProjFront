@@ -29,7 +29,7 @@ function HomePage({ pusher }) {
     const dispatch = useDispatch();
     const userInfo = useSelector(getUser)
     const roomInfo = useSelector(getUserRoom)
-    const taskInfo = useSelector(getUserAllTask)
+    // const taskInfo = useSelector(getUserAllTask)
     const todos = useSelector(getTodoTasks)
     const today = new Date().toISOString().split('T')[0];
 
